@@ -1,4 +1,4 @@
-# CLAUDE.md: 3월의 안건 해결사 프로젝트 규칙서
+# CLAUDE.md: 3월을 부탁해(AI 주총 어시스턴트) 프로젝트 규칙서
 
 @AGENTS.md
 
