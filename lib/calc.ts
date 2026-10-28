@@ -1,7 +1,7 @@
 // 숫자 계산을 모아 둔 파일입니다. (PLAN 작업 6)
 // PRD 규칙대로 숫자 계산은 AI에게 맡기지 않고 이 파일의 코드로만 합니다.
-// 여기서는 증감액·증감률·지분율·배당 증감을 계산하고(작업 6), 불참을 판정합니다(작업 7).
-// (보수한도 비교는 PLAN 작업 8에서 이 파일에 이어서 추가합니다.)
+// 여기서는 증감액·증감률·지분율·배당 증감을 계산하고(작업 6), 불참을 판정하고(작업 7),
+// 이사·감사 보수한도를 비교합니다(작업 8).
 
 import type {
   Dividend,
@@ -10,6 +10,7 @@ import type {
   GuidelineJudgment,
   Holding,
   LossLabel,
+  PayLimit,
 } from "./types.ts";
 
 /** 재무 변동표에 넣는 항목 순서 (PRD 5장) */
@@ -169,4 +170,105 @@ export function absenceOpinionReason(
     return `의결권 행사기준에 따르면 ${judgment} 사유에 해당하나, ${tail}`;
   }
   return `의결권 행사기준에 따르면 ${gist}(${judgment} 사유)에 해당하나, ${tail}`;
+}
+
+// ───────────────────────── 보수한도 비교 (PLAN 작업 8) ─────────────────────────
+
+/** 실적 지표가 좋아졌는지(up), 나빠졌는지(down), 그대로인지(flat), 알 수 없는지(null) */
+type Direction = "up" | "down" | "flat" | null;
+
+/** 재무 변동표의 한 줄이 어느 방향으로 움직였는지 봅니다. 적자 표시도 방향으로 바꿉니다. */
+function directionOf(row: FinancialRow | undefined): Direction {
+  if (!row || row.change === null) return null;
+  if (row.lossLabel === "적자 축소" || row.lossLabel === "흑자 전환") return "up";
+  if (row.lossLabel === "적자 지속" || row.lossLabel === "적자 전환") return "down";
+  if (row.change > 0) return "up";
+  if (row.change < 0) return "down";
+  return "flat";
+}
+
+/**
+ * 이사 보수한도를 경영성과(영업이익·당기순이익)와 나란히 비교합니다. (PRD 5장 must 2)
+ * - current·previous: 당기·전기 보수한도 (단위: 억 원)
+ * - financials: 같은 회사의 재무 변동표 (작업 6의 buildFinancialTable 결과)
+ *
+ * 표시 규칙
+ * 1) 보수한도나 두 실적 지표 중 하나라도 자료가 없으면 → "판단 불가: 담당자 확인 필요"
+ * 2) 두 지표가 모두 나빠졌는데 한도가 늘었으면 → "적정성 추가 검토 필요"
+ * 3) 한도가 늘었고, 한도 증가율이 두 지표의 증가율보다 모두 높으면 → "적정성 추가 검토 필요"
+ *    (동결·감소한 한도에는 3번을 적용하지 않습니다. "증가율"을 비교하는 규칙이기 때문)
+ * 두 지표의 방향이 엇갈리면 mixedDirection을 true로 두어, 사유에 종합 판단 근거를 쓰게 합니다.
+ */
+export function compareDirectorPayLimit(
+  current: number | null,
+  previous: number | null,
+  financials: FinancialRow[],
+): PayLimit {
+  const op = financials.find((r) => r.item === "영업이익");
+  const net = financials.find((r) => r.item === "당기순이익");
+  const result: PayLimit = {
+    target: "이사",
+    current,
+    previous,
+    changeRate: changeRate(current, previous),
+    operatingIncomeRate: op?.changeRate ?? null,
+    netIncomeRate: net?.changeRate ?? null,
+  };
+
+  const limitChange = changeAmount(current, previous);
+  const opDir = directionOf(op);
+  const netDir = directionOf(net);
+
+  // 1) 비교할 자료가 없음
+  if (limitChange === null || opDir === null || netDir === null) {
+    result.flag = "판단 불가: 담당자 확인 필요";
+    return result;
+  }
+
+  // 두 지표의 방향이 엇갈림 (하나는 좋아지고 하나는 나빠짐)
+  const dirs = [opDir, netDir];
+  if (dirs.includes("up") && dirs.includes("down")) result.mixedDirection = true;
+
+  // 2) 두 지표가 모두 나빠졌는데 한도는 늘어남
+  if (opDir === "down" && netDir === "down" && limitChange > 0) {
+    result.flag = "적정성 추가 검토 필요";
+    return result;
+  }
+
+  // 3) 한도가 늘었고, 한도 증가율이 두 지표의 증가율보다 모두 높음
+  const rate = result.changeRate;
+  const opRate = result.operatingIncomeRate;
+  const netRate = result.netIncomeRate;
+  if (
+    limitChange > 0 &&
+    rate !== null &&
+    opRate !== null &&
+    opRate !== undefined &&
+    netRate !== null &&
+    netRate !== undefined &&
+    rate > opRate &&
+    rate > netRate
+  ) {
+    result.flag = "적정성 추가 검토 필요";
+  }
+  return result;
+}
+
+/**
+ * 감사 보수한도를 비교합니다. (PRD 5장 must 2)
+ * 전년보다 줄었을 때만 "담당자 별도 검토 필요"를 표시하고, 동결·증가면 표시하지 않습니다.
+ * (가이드라인 4.1.2)는 감사 보수가 너무 적으면 감사가 제 역할을 하기 어렵다고 봄)
+ * 자료가 없으면 "판단 불가: 담당자 확인 필요"를 표시합니다.
+ */
+export function compareAuditorPayLimit(current: number | null, previous: number | null): PayLimit {
+  const result: PayLimit = {
+    target: "감사",
+    current,
+    previous,
+    changeRate: changeRate(current, previous),
+  };
+  const change = changeAmount(current, previous);
+  if (change === null) result.flag = "판단 불가: 담당자 확인 필요";
+  else if (change < 0) result.flag = "담당자 별도 검토 필요";
+  return result;
 }

@@ -147,6 +147,8 @@ export type PayLimit = {
   operatingIncomeRate?: number | null;
   /** 이사 보수한도와 나란히 비교할 당기순이익 증감률(%) */
   netIncomeRate?: number | null;
+  /** 영업이익과 당기순이익의 방향이 엇갈리면 true (사유에 종합 판단 근거를 밝혀야 함) */
+  mixedDirection?: boolean;
   /** 판정 결과 문구 (예: "적정성 추가 검토 필요"). 문제가 없으면 없음 */
   flag?: "적정성 추가 검토 필요" | "담당자 별도 검토 필요" | "판단 불가: 담당자 확인 필요";
 };
