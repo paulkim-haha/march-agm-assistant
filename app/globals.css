@@ -22,5 +22,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* 한글이 깔끔하게 보이도록 윈도우·맥의 한글 글꼴을 함께 지정합니다. */
+  font-family: var(--font-geist-sans), "Malgun Gothic", "Apple SD Gothic Neo",
+    sans-serif;
 }
