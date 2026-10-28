@@ -1,15 +1,17 @@
 // 숫자 계산을 모아 둔 파일입니다. (PLAN 작업 6)
 // PRD 규칙대로 숫자 계산은 AI에게 맡기지 않고 이 파일의 코드로만 합니다.
 // 여기서는 증감액·증감률·지분율·배당 증감을 계산하고(작업 6), 불참을 판정하고(작업 7),
-// 이사·감사 보수한도를 비교합니다(작업 8).
+// 이사·감사 보수한도를 비교하고(작업 8), 개요표의 참석여부를 판정합니다(작업 13).
 
 import type {
+  Attendance,
   Dividend,
   FinancialItem,
   FinancialRow,
   GuidelineJudgment,
   Holding,
   LossLabel,
+  Opinion,
   PayLimit,
 } from "./types.ts";
 
@@ -170,6 +172,19 @@ export function absenceOpinionReason(
     return `의결권 행사기준에 따르면 ${judgment} 사유에 해당하나, ${tail}`;
   }
   return `의결권 행사기준에 따르면 ${gist}(${judgment} 사유)에 해당하나, ${tail}`;
+}
+
+/**
+ * 개요표의 참석여부를 정합니다. (PRD 5장 must 2)
+ * - 판단 보류 안건이 하나라도 남아 있으면 "판정 대기" (담당자가 의견을 고르면 다시 판정)
+ * - 모든 안건이 불참이면 "불참"
+ * - 하나라도 찬성·반대가 있으면 "참석"
+ * 안건이 없으면(아직 의견을 정하기 전) "판정 대기"입니다.
+ */
+export function decideAttendance(opinions: Opinion[]): Attendance {
+  if (opinions.length === 0 || opinions.includes("판단 보류")) return "판정 대기";
+  if (opinions.every((o) => o === "불참")) return "불참";
+  return "참석";
 }
 
 // ───────────────────────── 보수한도 비교 (PLAN 작업 8) ─────────────────────────
