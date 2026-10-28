@@ -4,7 +4,8 @@
 //
 // 만드는 방법
 // 1) PDF의 글자 조각을 쪽마다 "화면 위치(위→아래, 왼쪽→오른쪽)" 순서로 다시 줄 세웁니다.
-//    (PDF 안의 저장 순서대로 읽으면 표 글자가 엉뚱한 곳에 끼어들기 때문)
+//    (PDF 안의 저장 순서대로 읽으면 표 글자가 엉뚱한 곳에 끼어들기 때문.
+//     업로드 파일 읽기와 같은 함수 lib/extract-text.ts의 readPdfPages를 씁니다.)
 // 2) 줄을 보며 장(1. 재무제표의 승인), 절(1.1. 외부감사인…), 조항(1.1.1)…)을 나눕니다.
 // 3) "※"로 시작하는 참고 문구와 그 아래 표는 조항 본문과 섞이지 않게
 //    그 절의 "표" 항목(예: "3.3 표")으로 따로 모읍니다.
@@ -12,7 +13,7 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getDocumentProxy } from "unpdf";
+import { readPdfPages } from "../lib/extract-text.ts";
 
 const PDF_FILE = path.join("data", "23.10.25 _ 자산운용사의 의결권행사가이드라인(개정안).pdf");
 const OUT_FILE = path.join("data", "guideline.json");
@@ -50,45 +51,14 @@ const REQUIRED = [
 // 띄어쓰기 차이 때문에 검사가 틀리지 않도록 공백을 모두 지우고 비교합니다.
 const squash = (s) => s.replace(/\s+/g, "");
 
-/** 한 쪽의 글자 조각들을 화면에 보이는 줄 순서대로 묶습니다. */
-function pageToLines(items) {
-  const rows = [];
-  for (const it of items) {
-    if (!it.str || !it.str.trim()) continue;
-    const x = it.transform[4];
-    const y = it.transform[5];
-    // 높이가 거의 같은(2pt 이내) 조각은 같은 줄로 봅니다.
-    let row = rows.find((r) => Math.abs(r.y - y) <= 2);
-    if (!row) {
-      row = { y, parts: [] };
-      rows.push(row);
-    }
-    row.parts.push({ x, width: it.width, str: it.str, height: it.height });
-  }
-  rows.sort((a, b) => b.y - a.y); // PDF는 아래쪽이 y=0이라 큰 값이 위쪽
-
-  return rows.map((row) => {
-    row.parts.sort((a, b) => a.x - b.x);
-    let text = "";
-    let prevEnd = null;
-    for (const p of row.parts) {
-      // 앞 조각과 틈이 있으면 띄어 씁니다.
-      if (prevEnd !== null && p.x - prevEnd > 1) text += " ";
-      text += p.str;
-      prevEnd = p.x + p.width;
-    }
-    return { text: text.replace(/\s+/g, " ").trim() };
-  });
-}
-
+/** 본문 쪽들의 줄을 화면에 보이는 순서대로 모읍니다. */
 async function readPdfLines() {
-  const pdf = await getDocumentProxy(new Uint8Array(await readFile(PDF_FILE)));
+  const pages = await readPdfPages(new Uint8Array(await readFile(PDF_FILE)));
   const lines = [];
-  for (let n = FIRST_BODY_PAGE; n <= pdf.numPages; n++) {
-    const content = await (await pdf.getPage(n)).getTextContent();
-    for (const line of pageToLines(content.items)) {
-      if (/^-\s*\d+\s*-$/.test(line.text)) continue; // 쪽 번호 "- 7 -" 제외
-      lines.push(line.text);
+  for (const pageLines of pages.slice(FIRST_BODY_PAGE - 1)) {
+    for (const line of pageLines) {
+      if (/^-\s*\d+\s*-$/.test(line)) continue; // 쪽 번호 "- 7 -" 제외
+      lines.push(line);
     }
   }
   return lines;
