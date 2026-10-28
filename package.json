@@ -26,7 +26,8 @@
     "check:copy": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-copy.mjs",
     "check:reapply":"node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-reapply.mjs",
     "check:paylimit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-paylimit.mjs",
-    "check:holdings": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-holdings.mjs"
+    "check:holdings": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-holdings.mjs",
+    "score:live": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/score-samples.mjs"
   },
   "dependencies": {
     "next": "16.4.3",

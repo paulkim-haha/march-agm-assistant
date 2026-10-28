@@ -17,7 +17,7 @@ import {
 } from "./calc.ts";
 import type { ExtractedBundle, UploadedFile } from "./extract-text.ts";
 import { ReviewError, extractUploadTexts } from "./extract-text.ts";
-import { checkClauseIds, clausesForType, loadGuideline } from "./guideline.ts";
+import { checkClauseIds, clausesForType, loadGuideline, normalizeClauseId, scopeText } from "./guideline.ts";
 import { DataMissingError, findHolding, loadHoldings, normalizeCompanyName } from "./holdings.ts";
 import {
   CLAUSE_SYSTEM,
@@ -347,8 +347,8 @@ function factsFor(agenda: Agenda, info: NoticeInfo): string {
 
 /**
  * ④ 안건마다 가이드라인 조항을 고릅니다. (PRD 5장 must 1)
- * - AI 1번 호출: 의견을 매길 안건 전부(불참 판정 회사도 똑같이)와, 그 유형에 맞는 장의 조항 목록을 함께 보냄
- *   ("그 밖의 안건"이 있으면 조항 전체를 보냄)
+ * - AI 2번 동시 호출(답을 합침): 의견을 매길 안건 전부(불참 판정 회사도 똑같이)와, 그 유형에 맞는 장의 조항 목록을 함께 보냄
+ *   ("그 밖의 안건"이 있으면 조항 전체를 보냄). 안건마다 자기 유형의 장 안의 조항만 남김 (작업 21)
  * - 코드 검사: 가이드라인에 없는 번호는 지우고, 같은 번호는 한 번만, 최대 3개 (작업 5의 checkClauseIds)
  * - 남는 조항이 없으면 "판단 보류" 경고 → 의견 칸이 "판단 보류"가 됨 (작업 15)
  */
@@ -358,39 +358,59 @@ export async function matchClauses(
   fetchImpl?: FetchLike,
 ): Promise<ClauseStep> {
   const targets = notice.agendas.filter((a) => !a.isGroup);
+  // 안건마다 고를 수 있는 조항: 유형에 맞는 장만. 유형을 모르거나 "그 밖의 안건"이면 전체 (PLAN 작업 21)
+  // (예: 배당기준일을 바꾸는 정관 변경이 1장 배당 조항을, 재무제표 안건이 2장 일괄상정 조항을 고르지 않게)
+  const isOpen = (a: Agenda) => a.type === null || a.type === "그 밖의 안건";
+  const allowedFor = (a: Agenda) => (isOpen(a) ? guideline : clausesForType(guideline, a.type));
 
   // AI에게 보여 줄 조항 범위: 안건 유형별 범위를 합침 (DESIGN.md 3장 연결표)
-  const needAll = targets.some((a) => a.type === null || a.type === "그 밖의 안건");
+  const needAll = targets.some(isOpen);
   const scoped = needAll
     ? guideline
     : guideline.filter((c) => targets.some((a) => clausesForType(guideline, a.type).includes(c)));
 
-  const answer = await askAiJson(
-    {
-      system: CLAUSE_SYSTEM,
-      user: clauseUserPrompt(
-        targets.map((a) => ({
-          number: a.number,
-          title: a.title,
-          type: a.type ?? "그 밖의 안건",
-          content: a.content,
-          facts: factsFor(a, notice.info),
-        })),
-        scoped,
-      ),
-      schema: clauseMatchSchema,
-      schemaName: "clause_match",
-    },
-    fetchImpl,
-  );
+  const request = {
+    system: CLAUSE_SYSTEM,
+    user: clauseUserPrompt(
+      targets.map((a) => ({
+        number: a.number,
+        title: a.title,
+        type: a.type ?? "그 밖의 안건",
+        scope: isOpen(a) ? "전체" : scopeText(a.type),
+        content: a.content,
+        facts: factsFor(a, notice.info),
+      })),
+      scoped,
+    ),
+    schema: clauseMatchSchema,
+    schemaName: "clause_match",
+  };
+  // 같은 질문을 동시에 2번 하고 답을 합칩니다. (PLAN 작업 21 채점에서 찾은 문제)
+  // 작은 모델은 같은 질문에도 가끔 조항을 빠뜨리거나 빈 답을 주므로, 한쪽이 빠뜨린 조항을 다른 쪽이 채움
+  // 동시에 보내므로 기다리는 시간은 1번 할 때와 거의 같습니다. 한쪽만 실패하면 남은 답만 씁니다.
+  const settled = await Promise.allSettled([askAiJson(request, fetchImpl), askAiJson(request, fetchImpl)]);
+  const answers = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
+  if (answers.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
 
   const byAgenda: Record<string, AgendaClauses> = {};
   const warnings: Warning[] = [];
   for (const agenda of targets) {
     // AI가 의안 번호를 조금 다르게 적어도 찾을 수 있게 번호 모양을 맞춰 비교
-    const match = answer.matches.find((m) => normalizeAgendaNumber(m.agendaNumber) === agenda.number);
-    const { valid, removed } = checkClauseIds(guideline, match?.clauseIds ?? []);
-    byAgenda[agenda.number] = { agendaNumber: agenda.number, clauses: valid, removed, why: match?.why ?? "" };
+    const matches = answers.flatMap((ans) => ans.matches.filter((m) => normalizeAgendaNumber(m.agendaNumber) === agenda.number).slice(0, 1));
+    // 두 답을 합침: 두 답 모두 고른 조항이 먼저, 나머지는 먼저 나온 순서대로 (최대 3개는 아래 검사에서)
+    const votes = new Map<string, { raw: string; count: number; order: number }>();
+    for (const m of matches) {
+      for (const raw of m.clauseIds) {
+        const key = normalizeClauseId(raw) ?? raw;
+        const v = votes.get(key);
+        if (v) v.count++;
+        else votes.set(key, { raw, count: 1, order: votes.size });
+      }
+    }
+    const merged = [...votes.values()].sort((a, b) => b.count - a.count || a.order - b.order).map((v) => v.raw);
+    // 범위 밖 번호도 "없는 번호"처럼 지움 (removed에 남겨 둠)
+    const { valid, removed } = checkClauseIds(allowedFor(agenda), merged);
+    byAgenda[agenda.number] = { agendaNumber: agenda.number, clauses: valid, removed, why: matches[0]?.why ?? "" };
     if (valid.length === 0) {
       warnings.push({
         kind: "판단 보류",
@@ -623,8 +643,13 @@ export async function writeOpinions(
     if (pay?.flag) warnings.push({ kind: pay.flag.startsWith("판단 불가") ? "판단 불가" : pay.flag === "담당자 별도 검토 필요" ? "담당자 별도 검토 필요" : "적정성 추가 검토 필요", agendaNumber: agenda.number, message: `${agenda.number} ${agenda.title}: ${pay.flag}` });
 
     const managerChecks = isElection && ai ? ai.managerChecks.map((s) => s.trim()).filter(Boolean) : [];
-    for (const m of managerChecks) {
-      warnings.push({ kind: "담당자 확인 필요", agendaNumber: agenda.number, message: `${agenda.number} 담당자 판단 필요: ${m}` });
+    // 확인 필요 목록에는 안건마다 1줄만 (항목은 카드의 "담당자 판단 필요 사항"에 모두 있음) (PLAN 작업 21)
+    if (managerChecks.length) {
+      warnings.push({
+        kind: "담당자 확인 필요",
+        agendaNumber: agenda.number,
+        message: `${agenda.number} ${agenda.title}: 담당자 판단 필요 사항 ${managerChecks.length}개를 카드에서 확인해 주세요.`,
+      });
     }
 
     return {

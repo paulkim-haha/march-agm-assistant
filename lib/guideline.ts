@@ -100,6 +100,14 @@ function sectionOf(id: string): string {
   return id.replace(/ 표$/, "").split(".").slice(0, 2).join(".").replace(/\)$/, "");
 }
 
+/** 안건 유형의 조항 범위를 AI에게 보여 줄 글로 (예: "4장, 2.25·2.26·2.27절"). 유형을 모르면 "전체" (PLAN 작업 21) */
+export function scopeText(type: AgendaType | null): string {
+  if (!type) return "전체";
+  const scope = SCOPE_BY_TYPE[type];
+  const chapters = scope.chapters.map((c) => `${c}장`).join("·");
+  return scope.extraSections?.length ? `${chapters}, ${scope.extraSections.join("·")}절` : chapters;
+}
+
 /**
  * 안건 유형에 맞는 조항만 골라 줍니다. (④ 조항 고르기에서 AI에게 보여 줄 범위)
  * 유형을 모르면(null) 전체를 돌려줍니다. "그 밖의 안건"에서 못 찾으면 쓰는 쪽이 allClauses로 다시 부릅니다.

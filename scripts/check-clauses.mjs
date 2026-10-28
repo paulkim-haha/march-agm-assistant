@@ -73,10 +73,37 @@ if (!process.argv.includes("--live")) {
   check("감사의견이 들어감", prompt.includes("외부감사인 감사의견: 적정"), true);
   check("보수한도 범위의 2.27.2)가 들어감", prompt.includes("[2.27.2)]"), true);
   check("필요 없는 7장(자본구조) 조항은 안 들어감", prompt.includes("[7.1.1)]"), false);
+  check("안건마다 고를 수 있는 범위가 적힘 (작업 21)", prompt.includes("고를 수 있는 조항 범위: 4장, 2.25·2.26·2.27절"), true);
 
   sent.length = 0;
   await matchClauses({ ...notice, agendas: [ag("제1호", "지주회사 설립의 건", "그 밖의 안건")] }, guideline, fakeAi({ matches: [] }));
   check("'그 밖의 안건'이 있으면 조항 전체를 보냄", sent[0].includes("[7.1.1)]") && sent[0].includes("[1.1.1)]"), true);
+
+  console.log("\n[3] 2번 물어 답 합치기·범위 밖 조항 지우기 (작업 21)");
+  /** 부를 때마다 다른 답을 주는 가짜 AI */
+  const fakeSeq = (...list) => {
+    let i = 0;
+    return async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(list[Math.min(i++, list.length - 1)]) } }] }), { status: 200 });
+  };
+  const two = await matchClauses(
+    notice,
+    guideline,
+    fakeSeq(
+      { matches: [{ agendaNumber: "제2-1호", clauseIds: ["3.3.1)", "3.3.2)"], why: "가" }, { agendaNumber: "제1호", clauseIds: ["1.1.1)", "2.11.2)"], why: "가" }] },
+      { matches: [{ agendaNumber: "제2-1호", clauseIds: ["3.1.2)", "3.3.1)", "3.3 표"], why: "나" }] },
+    ),
+  );
+  check("두 답 모두 고른 조항이 먼저, 최대 3개", two.byAgenda["제2-1호"].clauses.map((c) => c.id), ["3.3.1)", "3.3.2)", "3.1.2)"]);
+  check("한쪽이 빠뜨린 안건은 다른 쪽 답으로", two.byAgenda["제1호"].clauses.map((c) => c.id), ["1.1.1)"]);
+  check("재무제표 안건이 고른 2장 조항(2.11.2))은 범위 밖이라 지움", two.byAgenda["제1호"].removed, ["2.11.2)"]);
+  let calls = 0;
+  const halfFail = async () => {
+    calls++;
+    if (calls === 1) return new Response("{}", { status: 500 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }] }), { status: 200 });
+  };
+  const half = await matchClauses(notice, guideline, halfFail);
+  check("한쪽 요청이 실패해도 남은 답으로 결과를 만듦", half.byAgenda["제1호"].clauses.map((c) => c.id), ["1.1.1)", "1.2.1)"]);
 } else {
   process.loadEnvFile(".env");
   console.log(`[실제 AI] 모델: ${process.env.OPENAI_MODEL}`);
