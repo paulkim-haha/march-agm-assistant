@@ -148,7 +148,7 @@ if (!process.argv.includes("--live")) {
   check("사유에 이해관계인 지분율", s.reviews[0].reason.includes("69.0%"), true);
 } else {
   process.loadEnvFile(".env");
-  console.log(`[실제 AI] 모델: ${process.env.OPENAI_MODEL}`);
+  console.log(`[실제 AI] 기본 모델: ${process.env.OPENAI_MODEL}, 의견·사유 모델: ${process.env.OPENAI_MODEL_OPINION || "(기본 모델)"}`);
   const load = async (f) => extractUploadTexts([{ name: f, bytes: new Uint8Array(await readFile(path.join("sample-data", f))) }]);
 
   const files = ["02_푸른해물산_소집통지서.md", "03_새봄바이오텍_소집통지서.md", "04_다온건설_소집통지서.md", "05_미래로통신_소집통지서.md"];

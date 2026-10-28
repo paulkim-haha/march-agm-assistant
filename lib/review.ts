@@ -413,6 +413,9 @@ export type OpinionStep = {
   warnings: Warning[];
 };
 
+/** 의견·사유 AI(큰 모델)를 기다리는 최대 시간. 시험에서 회사 1곳에 약 40~55초 걸려 넉넉히 잡음 */
+const OPINION_TIMEOUT_MS = 90_000;
+
 /** 숫자를 쉼표 넣어 보여 줍니다. (빈칸이면 "?") */
 const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "?" : n.toLocaleString("ko-KR"));
 /** 증감률을 부호와 함께 보여 줍니다. (+7.4%) */
@@ -460,6 +463,7 @@ function unknownNumbers(reason: string, allowedText: string): string[] {
  * ⑤ 안건마다 의견과 사유 초안을 만듭니다. (PRD 5장 must 2)
  * - 코드가 먼저 계산: 재무 변동표·배당(작업 6), 보수한도 비교(작업 8)
  * - AI 1번 호출: 근거 조항이 있는 안건만 보냄 (조항이 없는 안건은 "판단 보류"로 담당자에게 넘김)
+ *   이 단계만 큰 모델(.env의 OPENAI_MODEL_OPINION)을 씀. 500자 줄이기는 간단한 일이라 기본 모델을 씀
  *   AI는 찬성/반대만 고르고, 500자 이내 사유·판단 요지·담당자 판단 필요 사항을 씀
  * - 코드 검사
  *   · 500자 넘는 사유는 1번 다시 쓰게 하고, 그래도 넘으면 자르지 않고 "500자 초과" 경고
@@ -525,6 +529,10 @@ export async function writeOpinions(
         ),
         schema: opinionSchema,
         schemaName: "agenda_opinions",
+        // 의견·사유는 기준 비교가 정확해야 해서 큰 모델(.env의 OPENAI_MODEL_OPINION)을 씁니다.
+        // 큰 모델은 답이 느려 기다리는 시간을 늘립니다.
+        modelEnv: "OPENAI_MODEL_OPINION",
+        timeoutMs: OPINION_TIMEOUT_MS,
       },
       fetchImpl,
     );

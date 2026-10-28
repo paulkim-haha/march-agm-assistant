@@ -87,6 +87,16 @@ if (!live) {
   const unavailable = await tryAsk(fakeFetch([401]));
   check("안내 문구에 키가 들어 있지 않음", unavailable.message.includes("test-key"), false);
 
+  console.log("\n[4] 요청마다 다른 모델 쓰기 (.env 칸 이름으로)");
+  process.env.OPENAI_MODEL_OPINION = "big-model";
+  const big = fakeFetch([JSON.stringify({ companyName: "a", meetingDate: "b" })]);
+  await askAiJson({ ...request, modelEnv: "OPENAI_MODEL_OPINION" }, big);
+  check("지정한 칸의 모델을 씀", big.calls[0].model, "big-model");
+  delete process.env.OPENAI_MODEL_OPINION;
+  const fallback = fakeFetch([JSON.stringify({ companyName: "a", meetingDate: "b" })]);
+  await askAiJson({ ...request, modelEnv: "OPENAI_MODEL_OPINION" }, fallback);
+  check("그 칸이 비어 있으면 기본 모델", fallback.calls[0].model, "test-model");
+
   delete process.env.OPENAI_API_KEY;
   check("키가 없으면 AI_UNAVAILABLE", (await tryAsk(fakeFetch([]))).code, "AI_UNAVAILABLE");
   process.env.OPENAI_API_KEY = "test-key";

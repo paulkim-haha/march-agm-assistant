@@ -9,7 +9,7 @@ import { ReviewError } from "./extract-text.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
-/** AI를 한 번 부를 때 기다리는 최대 시간 (검토 API 전체 한도 120초 안에 3번 부를 수 있게) */
+/** AI를 한 번 부를 때 기다리는 기본 최대 시간 (작은 모델 기준. 큰 모델은 요청마다 timeoutMs로 늘림) */
 const TIMEOUT_MS = 35_000;
 
 /** AI에게 보낼 요청 */
@@ -22,15 +22,25 @@ export type AiRequest<T> = {
   schema: z.ZodType<T>;
   /** 답 모양의 이름 (영문·숫자·_만, 예: "notice_info") */
   schemaName: string;
+  /**
+   * 이 요청에만 다른 모델을 쓸 때, 모델 이름이 들어 있는 .env 칸 이름 (예: "OPENAI_MODEL_OPINION")
+   * 그 칸이 비어 있으면 기본 모델(OPENAI_MODEL)을 씁니다. 모델 이름은 코드에 직접 적지 않습니다.
+   */
+  modelEnv?: string;
+  /** 이 요청에만 기다리는 시간을 바꿀 때 (밀리초). 큰 모델은 답이 느려서 늘려 줍니다. */
+  timeoutMs?: number;
 };
 
 /** 시험할 때 진짜 인터넷 대신 가짜 응답을 넣을 수 있게 fetch를 바꿔 끼울 수 있습니다. */
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
-/** .env에서 AI 설정을 읽습니다. 없으면 AI_UNAVAILABLE (값은 어디에도 보여 주지 않음) */
-function readConfig(): { apiKey: string; model: string } {
+/**
+ * .env에서 AI 설정을 읽습니다. 없으면 AI_UNAVAILABLE (값은 어디에도 보여 주지 않음)
+ * modelEnv를 주면 그 칸의 모델을 먼저 쓰고, 비어 있으면 기본 모델(OPENAI_MODEL)을 씁니다.
+ */
+function readConfig(modelEnv?: string): { apiKey: string; model: string } {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  const model = process.env.OPENAI_MODEL?.trim();
+  const model = (modelEnv ? process.env[modelEnv]?.trim() : undefined) || process.env.OPENAI_MODEL?.trim();
   if (!apiKey || !model) {
     throw new ReviewError("AI_UNAVAILABLE");
   }
@@ -47,6 +57,7 @@ async function requestOnce(
   messages: { role: "system" | "user" | "assistant"; content: string }[],
   jsonSchema: object,
   schemaName: string,
+  timeoutMs: number,
 ): Promise<string> {
   let res: Response;
   try {
@@ -65,7 +76,7 @@ async function requestOnce(
           json_schema: { name: schemaName, schema: jsonSchema },
         },
       }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     // 인터넷 연결 실패, 시간 초과 등
@@ -115,7 +126,8 @@ function parseAnswer<T>(content: string, schema: z.ZodType<T>): T {
  * - 두 번 다 틀리면 AI_BAD_RESPONSE, 연결 자체가 안 되면 AI_UNAVAILABLE 오류를 냅니다.
  */
 export async function askAiJson<T>(request: AiRequest<T>, fetchImpl: FetchLike = fetch): Promise<T> {
-  const config = readConfig();
+  const config = readConfig(request.modelEnv);
+  const timeoutMs = request.timeoutMs ?? TIMEOUT_MS;
   const jsonSchema = z.toJSONSchema(request.schema);
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: request.system },
@@ -126,7 +138,7 @@ export async function askAiJson<T>(request: AiRequest<T>, fetchImpl: FetchLike =
   for (let attempt = 1; attempt <= 2; attempt++) {
     let content = "";
     try {
-      content = await requestOnce(fetchImpl, config, messages, jsonSchema, request.schemaName);
+      content = await requestOnce(fetchImpl, config, messages, jsonSchema, request.schemaName, timeoutMs);
       return parseAnswer(content, request.schema);
     } catch (e) {
       if (!(e instanceof BadAnswer)) throw e; // 연결 실패 등은 바로 멈춤
