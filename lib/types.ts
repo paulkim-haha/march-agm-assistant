@@ -91,7 +91,7 @@ export type GuidelineClause = {
   body: string;
 };
 
-/** 보고서에 근거로 붙는 조항 (마우스를 올리면 본문을 보여 주기 위해 본문까지 담음) */
+/** 보고서에 근거로 붙는 조항 (화면의 근거 박스에 원문을 보여 주기 위해 본문까지 담음. 사유 500자에 포함 안 함) */
 export type CitedClause = Pick<GuidelineClause, "id" | "title" | "body">;
 
 // ───────────────────────── 소집통지서에서 뽑은 정보 ─────────────────────────
