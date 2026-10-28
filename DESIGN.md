@@ -247,6 +247,7 @@ app1/
 │  ├─ page.tsx                # 머리말 + 업로드 구역 + 보고서 구역을 배치
 │  ├─ api/review/route.ts     # 검토 API: ①~⑥ 순서대로 실행
 │  └─ components/
+│     ├─ ReviewScreen.tsx     # 업로드 구역과 보고서 구역을 잇고, 받은 보고서를 기억 (브라우저 동작)
 │     ├─ UploadForm.tsx       # 파일 고르기, 검토 시작, "검토 중" 표시 (브라우저 동작)
 │     ├─ ReportView.tsx       # 개요표, 확인 필요 목록, 참석여부 재판정, 복사 버튼
 │     └─ AgendaCard.tsx       # 안건 1개의 의견·사유·조항·표

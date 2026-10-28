@@ -1,6 +1,6 @@
 // 첫 화면입니다. (DESIGN.md 6장: 머리말 → 업로드 구역 → 보고서 구역)
-// 지금은 머리말과 업로드 구역이 있고, 보고서 구역은 PLAN 작업 18에서 이 아래에 붙입니다.
-import UploadForm from "./components/UploadForm";
+// 머리말은 여기서, 업로드 구역과 보고서 구역은 ReviewScreen이 보여 줍니다.
+import ReviewScreen from "./components/ReviewScreen";
 
 export default function Home() {
   return (
@@ -23,8 +23,8 @@ export default function Home() {
           검토 의견과 사유 초안을 만들어 드립니다.
         </p>
 
-        {/* ② 업로드 구역 */}
-        <UploadForm />
+        {/* ② 업로드 구역 + ③ 보고서 구역 */}
+        <ReviewScreen />
       </main>
     </div>
   );

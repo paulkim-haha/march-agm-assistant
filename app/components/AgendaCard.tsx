@@ -1,0 +1,174 @@
+// 안건 1개의 검토 결과 카드입니다. (PLAN 작업 18, DESIGN.md 6장 ③ 안건별 카드)
+// 의견 → (재무 변동표·보수한도 비교) → 사유 → 근거 박스(조항 번호 + 원문) → 담당자 판단 필요 사항 순서로 보여 줍니다.
+// 지금은 보기만 하는 카드이고, 의견 바꾸기는 PLAN 작업 19, 사유 고치기·복사는 작업 20에서 붙입니다.
+
+import { RULES, type AgendaReview, type Dividend, type FinancialRow, type Opinion, type PayLimit } from "@/lib/types.ts";
+
+/** 의견마다 다른 색 (찬성 초록, 반대 빨강, 불참 회색, 판단 보류 주황) */
+const OPINION_STYLE: Record<Opinion, string> = {
+  찬성: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  반대: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+  불참: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  "판단 보류": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+};
+
+/** 숫자를 쉼표 넣어 보여 줍니다. 빈칸이면 "-" */
+const num = (n: number | null | undefined) => (n === null || n === undefined ? "-" : n.toLocaleString("ko-KR"));
+/** 증감률을 부호와 함께 (+7.4%) */
+const pct = (n: number | null | undefined) => (n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
+/** 증감액을 부호와 함께 (+88,300) */
+const signed = (n: number | null | undefined) => (n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toLocaleString("ko-KR")}`);
+
+export function OpinionBadge({ opinion }: { opinion: Opinion }) {
+  return <span className={`rounded-full px-3 py-0.5 text-sm font-semibold ${OPINION_STYLE[opinion]}`}>{opinion}</span>;
+}
+
+/** 재무 변동표 (별도재무제표 기준, 단위: 백만 원) */
+function FinancialTable({ rows, dividend }: { rows: FinancialRow[]; dividend?: Dividend }) {
+  if (rows.every((r) => r.current === null && r.previous === null)) {
+    return <p className="text-sm text-amber-700 dark:text-amber-400">재무표를 찾지 못했습니다. 담당자 확인이 필요합니다.</p>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[420px] text-sm">
+        <caption className="mb-1 text-left text-xs text-zinc-500">재무 변동표 (별도재무제표, 단위: 백만 원)</caption>
+        <thead>
+          <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800">
+            <th className="py-1 text-left font-medium">항목</th>
+            <th className="py-1 text-right font-medium">전기</th>
+            <th className="py-1 text-right font-medium">당기</th>
+            <th className="py-1 text-right font-medium">증감액</th>
+            <th className="py-1 text-right font-medium">증감률</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.item} className="border-b border-zinc-100 dark:border-zinc-900">
+              <td className="py-1">{r.item}</td>
+              <td className="py-1 text-right tabular-nums">{num(r.previous)}</td>
+              <td className="py-1 text-right tabular-nums">{num(r.current)}</td>
+              <td className="py-1 text-right tabular-nums">{signed(r.change)}</td>
+              <td className="py-1 text-right tabular-nums">{r.changeRate !== null ? pct(r.changeRate) : (r.lossLabel ?? "-")}</td>
+            </tr>
+          ))}
+          {dividend && (
+            <tr>
+              <td className="py-1">주당배당금(원)</td>
+              <td className="py-1 text-right tabular-nums">{num(dividend.previousPerShare)}</td>
+              <td className="py-1 text-right tabular-nums">{num(dividend.currentPerShare)}</td>
+              <td className="py-1 text-right tabular-nums">{signed(dividend.change)}</td>
+              <td className="py-1 text-right">-</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 보수한도 비교 (단위: 억 원) */
+function PayLimitBox({ pay }: { pay: PayLimit }) {
+  return (
+    <div className="rounded-md bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-900">
+      <p>
+        {pay.target} 보수한도 <span className="tabular-nums">{num(pay.previous)}억 원 → {num(pay.current)}억 원</span>{" "}
+        ({pct(pay.changeRate)})
+      </p>
+      {pay.target === "이사" && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          영업이익 {pct(pay.operatingIncomeRate)} · 당기순이익 {pct(pay.netIncomeRate)}
+          {pay.mixedDirection && " · 두 지표의 방향이 엇갈림"}
+        </p>
+      )}
+      {pay.flag && <p className="mt-1 font-semibold text-amber-700 dark:text-amber-400">⚠ {pay.flag}</p>}
+    </div>
+  );
+}
+
+type Props = {
+  review: AgendaReview;
+  /** 확인 필요 목록에서 눌렀을 때 이 카드로 이동하기 위한 이름표 */
+  anchorId: string;
+  /** 재무제표 안건이면 함께 보여 줄 재무 변동표·배당 */
+  financials?: FinancialRow[];
+  dividend?: Dividend;
+  /** 하위 안건이면 들여 씁니다 */
+  isSub: boolean;
+};
+
+export default function AgendaCard({ review, anchorId, financials, dividend, isSub }: Props) {
+  const { agenda, opinion, guidelineJudgment, reason, clauses, managerChecks, payLimit } = review;
+  const pending = opinion === "판단 보류";
+  const over = reason.length > RULES.maxReasonLength;
+
+  return (
+    <article
+      id={anchorId}
+      className={`scroll-mt-4 rounded-lg border bg-white p-4 dark:bg-zinc-950 ${isSub ? "ml-4 sm:ml-8" : ""} ${
+        pending ? "border-2 border-red-400 dark:border-red-700" : "border-zinc-200 dark:border-zinc-800"
+      }`}
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
+          {agenda.number} {agenda.title}
+        </h3>
+        <OpinionBadge opinion={opinion} />
+      </header>
+
+      {/* 불참 회사는 가이드라인 기준 판단도 함께 보여 줌 */}
+      {opinion === "불참" && (
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          가이드라인 기준 판단: <strong>{guidelineJudgment}</strong> → 의견: 불참
+        </p>
+      )}
+      {pending && <p className="mt-1 text-sm font-medium text-red-700 dark:text-red-400">담당자가 의견을 정해 주세요.</p>}
+      {agenda.conditionNumber && (
+        <p className="mt-1 text-xs text-zinc-500">※ {agenda.conditionNumber}이(가) 가결되는 경우에만 상정되는 안건</p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-3">
+        {financials && financials.length > 0 && <FinancialTable rows={financials} dividend={dividend} />}
+        {payLimit && <PayLimitBox pay={payLimit} />}
+
+        {/* 사유 */}
+        <section>
+          <div className="mb-1 flex items-center justify-between text-xs text-zinc-500">
+            <span>사유</span>
+            <span className={over ? "font-semibold text-red-600" : ""}>
+              {reason.length} / {RULES.maxReasonLength}자
+            </span>
+          </div>
+          <p className="whitespace-pre-wrap rounded-md border border-zinc-200 px-3 py-2 text-sm leading-6 text-zinc-800 dark:border-zinc-800 dark:text-zinc-200">
+            {reason}
+          </p>
+        </section>
+
+        {/* 근거 박스: 조항 번호와 가이드라인 원문 (사유 500자에 세지 않음) */}
+        {clauses.length > 0 && (
+          <section className="flex flex-col gap-2">
+            {clauses.map((c) => (
+              <div key={c.id} className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/40">
+                <p className="border-b border-sky-200 px-3 py-1 text-xs font-semibold text-sky-800 dark:border-sky-900 dark:text-sky-300">
+                  근거 {c.id} {c.title}
+                </p>
+                <p className="max-h-40 overflow-y-auto px-3 py-2 text-xs leading-5 text-zinc-700 dark:text-zinc-300">{c.body}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* 담당자 판단 필요 사항 (선임 안건, 사유와 따로) */}
+        {managerChecks.length > 0 && (
+          <section className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/40">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">담당자 판단 필요 사항</p>
+            <ul className="mt-1 list-disc pl-5 text-sm text-zinc-800 dark:text-zinc-200">
+              {managerChecks.map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    </article>
+  );
+}
