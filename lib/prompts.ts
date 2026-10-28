@@ -1,5 +1,5 @@
 // AI에게 줄 지시문과 AI 답의 모양을 모아 둔 파일입니다. (DESIGN.md 3장 ②④⑤)
-// 지금은 ② 정보 뽑기(PLAN 작업 12)만 있고, ④ 조항 고르기·⑤ 사유 쓰기는 작업 14·15에서 추가합니다.
+// ② 정보 뽑기(PLAN 작업 12), ④ 조항 고르기(작업 14)가 있고, ⑤ 사유 쓰기는 작업 15에서 추가합니다.
 
 import { z } from "zod";
 import { AGENDA_TYPES } from "./types.ts";
@@ -86,4 +86,48 @@ export const NOTICE_SYSTEM = `너는 주주총회 소집통지서와 안건 설�
 /** ② 정보 뽑기 요청 글 */
 export function noticeUserPrompt(text: string): string {
   return `아래 자료에서 주주총회 정보를 뽑아 주세요.\n\n----- 자료 시작 -----\n${text}\n----- 자료 끝 -----`;
+}
+
+// ───────────────────────── ④ 가이드라인 조항 고르기 ─────────────────────────
+
+/** ④ 조항 고르기에서 AI가 돌려줄 답의 모양 */
+export const clauseMatchSchema = z.object({
+  matches: z.array(
+    z.object({
+      agendaNumber: z.string().describe("의안 번호 (예: '제2-1호')"),
+      clauseIds: z
+        .array(z.string())
+        .describe("이 안건의 판단 근거가 되는 조항 번호. 목록에 있는 번호만, 가장 직접 관련된 것부터 최대 3개. 맞는 조항이 없으면 빈 배열"),
+      why: z.string().describe("이 조항들을 고른 이유 한두 문장"),
+    }),
+  ),
+});
+
+export type ClauseMatch = z.infer<typeof clauseMatchSchema>;
+
+/** ④ 조항 고르기 지시문 */
+export const CLAUSE_SYSTEM = `너는 금융투자협회 「자산운용사 의결권 행사 가이드라인」에 따라 주주총회 안건을 검토하는 담당자다.
+안건마다 판단 근거가 되는 가이드라인 조항을 고른다. 반드시 지킬 규칙:
+1. 아래 "가이드라인 조항 목록"에 있는 번호만 고른다. 목록에 없는 번호나 법령 조문(예: 상법 제382조)은 쓰지 않는다.
+2. 번호는 목록에 적힌 그대로 쓴다 (예: "3.3.1)", "3.3 표").
+3. 안건 1건당 가장 직접 관련된 조항부터 최대 3개까지만 고른다.
+4. 자료에 나온 구체적인 사실(재직 기간, 겸직 수, 출석률, 감사의견, 희석 비율, 변경 전후 문구 등)이 해당하는지 판단하는 조항을 우선 고른다.
+5. 사외이사·감사위원 후보의 결격사유가 문제 되면 법령 결격사유 표("3.3 표")도 고를 수 있다.
+6. 맞는 조항이 정말 없으면 추측하지 말고 빈 배열로 둔다.
+7. 회사가 불참 대상인지는 신경 쓰지 말고, 안건 내용만 보고 고른다.`;
+
+/** ④ 조항 고르기 요청 글 */
+export function clauseUserPrompt(
+  agendas: { number: string; title: string; type: string; content: string; facts: string }[],
+  clauses: { id: string; title: string; body: string }[],
+): string {
+  const agendaText = agendas
+    .map(
+      (a) =>
+        `■ ${a.number} ${a.title}\n- 유형: ${a.type}\n- 내용: ${a.content || "(내용 없음)"}` +
+        (a.facts ? `\n- 참고 사실: ${a.facts}` : ""),
+    )
+    .join("\n\n");
+  const clauseText = clauses.map((c) => `[${c.id}] (${c.title}) ${c.body}`).join("\n");
+  return `다음 안건마다 근거 조항을 골라 주세요.\n\n===== 안건 =====\n${agendaText}\n\n===== 가이드라인 조항 목록 =====\n${clauseText}`;
 }

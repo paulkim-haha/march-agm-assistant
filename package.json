@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "build:guideline": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-guideline.mjs",
+    "check:clauses": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-clauses.mjs",
+    "check:clauses:live": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-clauses.mjs --live",
     "check:extract": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extract.mjs",
     "check:absence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-absence.mjs",
     "check:ai": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ai.mjs",

@@ -1,13 +1,23 @@
 // 검토 단계(DESIGN.md 3장 ①~⑥)를 차례로 잇는 파일입니다.
-// 지금은 ② 정보 뽑기(PLAN 작업 12)와 개요표 만들기(작업 13)가 있고, 나머지 단계는 작업 14~16에서 이어서 추가합니다.
+// 지금은 ② 정보 뽑기(PLAN 작업 12), 개요표 만들기(작업 13), ④ 조항 대조(작업 14)가 있고,
+// 나머지 단계는 작업 15~16에서 이어서 추가합니다.
 
 import { askAiJson, type FetchLike } from "./ai.ts";
 import { absenceReason, decideAttendance, isAbsenceCompany } from "./calc.ts";
 import type { ExtractedBundle } from "./extract-text.ts";
 import { ReviewError } from "./extract-text.ts";
+import { checkClauseIds, clausesForType } from "./guideline.ts";
 import { findHolding, normalizeCompanyName } from "./holdings.ts";
-import { NOTICE_SYSTEM, noticeInfoSchema, noticeUserPrompt, type NoticeInfo } from "./prompts.ts";
-import type { Agenda, Holding, Opinion, Overview, Warning } from "./types.ts";
+import {
+  CLAUSE_SYSTEM,
+  NOTICE_SYSTEM,
+  clauseMatchSchema,
+  clauseUserPrompt,
+  noticeInfoSchema,
+  noticeUserPrompt,
+  type NoticeInfo,
+} from "./prompts.ts";
+import type { Agenda, CitedClause, GuidelineClause, Holding, Opinion, Overview, Warning } from "./types.ts";
 
 // ───────────────────────── 원문 대조 도우미 ─────────────────────────
 
@@ -259,4 +269,101 @@ export function buildOverview(
   };
 
   return { overview, holding, isAbsenceCompany: absent, warnings };
+}
+
+// ───────────────────────── ④ 조항 대조 (PLAN 작업 14, must 1) ─────────────────────────
+
+/** 안건 1개의 조항 대조 결과 */
+export type AgendaClauses = {
+  agendaNumber: string;
+  /** 가이드라인에 실제로 있는 근거 조항 (최대 3개, 번호·소제목·원문 → 근거 박스) */
+  clauses: CitedClause[];
+  /** AI가 골랐지만 가이드라인에 없거나 3개를 넘어 코드가 뺀 번호 */
+  removed: string[];
+  /** AI가 밝힌 고른 이유 (사유 쓰기에 참고) */
+  why: string;
+};
+
+/** ④ 조항 대조 결과 */
+export type ClauseStep = {
+  /** 의안 번호 → 조항 대조 결과 (상위 안건 제목줄은 빠짐) */
+  byAgenda: Record<string, AgendaClauses>;
+  /** 근거 조항이 하나도 없어 "판단 보류"가 될 안건의 경고 */
+  warnings: Warning[];
+};
+
+/** 안건 판단에 참고할 사실(후보자 정보·보수한도·재무표·감사의견)을 한 줄로 모읍니다. */
+function factsFor(agenda: Agenda, info: NoticeInfo): string {
+  const facts: string[] = [];
+  for (const c of info.candidates.filter((c) => c.agendaNumber === agenda.number)) {
+    facts.push(`후보 ${c.name}(${c.role}): ${c.details}`);
+  }
+  for (const p of info.payLimits.filter((p) => p.agendaNumber === agenda.number)) {
+    facts.push(`${p.target} 보수한도 당기 ${p.current ?? "?"}억 원, 전기 ${p.previous ?? "?"}억 원`);
+  }
+  if (agenda.type === "재무제표·이익배당 승인") {
+    if (info.auditOpinion) facts.push(`외부감사인 감사의견: ${info.auditOpinion}`);
+    if (info.dividend) {
+      facts.push(`주당배당금 당기 ${info.dividend.currentPerShare ?? "?"}원, 전기 ${info.dividend.previousPerShare ?? "?"}원`);
+    }
+  }
+  if (agenda.conditionNumber) facts.push(`${agenda.conditionNumber}이(가) 가결되는 경우에만 상정되는 안건`);
+  return facts.join(" / ");
+}
+
+/**
+ * ④ 안건마다 가이드라인 조항을 고릅니다. (PRD 5장 must 1)
+ * - AI 1번 호출: 의견을 매길 안건 전부(불참 판정 회사도 똑같이)와, 그 유형에 맞는 장의 조항 목록을 함께 보냄
+ *   ("그 밖의 안건"이 있으면 조항 전체를 보냄)
+ * - 코드 검사: 가이드라인에 없는 번호는 지우고, 같은 번호는 한 번만, 최대 3개 (작업 5의 checkClauseIds)
+ * - 남는 조항이 없으면 "판단 보류" 경고 → 의견 칸이 "판단 보류"가 됨 (작업 15)
+ */
+export async function matchClauses(
+  notice: NoticeStep,
+  guideline: GuidelineClause[],
+  fetchImpl?: FetchLike,
+): Promise<ClauseStep> {
+  const targets = notice.agendas.filter((a) => !a.isGroup);
+
+  // AI에게 보여 줄 조항 범위: 안건 유형별 범위를 합침 (DESIGN.md 3장 연결표)
+  const needAll = targets.some((a) => a.type === null || a.type === "그 밖의 안건");
+  const scoped = needAll
+    ? guideline
+    : guideline.filter((c) => targets.some((a) => clausesForType(guideline, a.type).includes(c)));
+
+  const answer = await askAiJson(
+    {
+      system: CLAUSE_SYSTEM,
+      user: clauseUserPrompt(
+        targets.map((a) => ({
+          number: a.number,
+          title: a.title,
+          type: a.type ?? "그 밖의 안건",
+          content: a.content,
+          facts: factsFor(a, notice.info),
+        })),
+        scoped,
+      ),
+      schema: clauseMatchSchema,
+      schemaName: "clause_match",
+    },
+    fetchImpl,
+  );
+
+  const byAgenda: Record<string, AgendaClauses> = {};
+  const warnings: Warning[] = [];
+  for (const agenda of targets) {
+    // AI가 의안 번호를 조금 다르게 적어도 찾을 수 있게 번호 모양을 맞춰 비교
+    const match = answer.matches.find((m) => normalizeAgendaNumber(m.agendaNumber) === agenda.number);
+    const { valid, removed } = checkClauseIds(guideline, match?.clauseIds ?? []);
+    byAgenda[agenda.number] = { agendaNumber: agenda.number, clauses: valid, removed, why: match?.why ?? "" };
+    if (valid.length === 0) {
+      warnings.push({
+        kind: "판단 보류",
+        agendaNumber: agenda.number,
+        message: `${agenda.number} ${agenda.title}: 맞는 가이드라인 조항을 찾지 못했습니다. 담당자가 판단해 주세요.`,
+      });
+    }
+  }
+  return { byAgenda, warnings };
 }
