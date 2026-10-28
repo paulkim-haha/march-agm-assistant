@@ -13,6 +13,7 @@ import {
   conditionalWarnings,
   decideAttendance,
   isAbsenceCompany,
+  reasonLengthWarning,
 } from "./calc.ts";
 import type { ExtractedBundle, UploadedFile } from "./extract-text.ts";
 import { ReviewError, extractUploadTexts } from "./extract-text.ts";
@@ -607,9 +608,8 @@ export async function writeOpinions(
       reason = absenceOpinionReason(overviewStep.holding, judgment, ai?.summary ?? "");
     }
 
-    if (reason.length > RULES.maxReasonLength) {
-      warnings.push({ kind: "500자 초과", agendaNumber: agenda.number, message: `${agenda.number}: 사유가 ${reason.length}자로 500자를 넘습니다. 줄여 주세요.` });
-    }
+    const lengthWarning = reasonLengthWarning(agenda.number, reason);
+    if (lengthWarning) warnings.push(lengthWarning);
     const unknown = ai ? unknownNumbers(reason, allowedText) : [];
     if (unknown.length) {
       warnings.push({

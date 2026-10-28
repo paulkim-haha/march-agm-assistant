@@ -1,8 +1,8 @@
-// 안건 1개의 검토 결과 카드입니다. (PLAN 작업 18·19, DESIGN.md 6장 ③ 안건별 카드)
+// 안건 1개의 검토 결과 카드입니다. (PLAN 작업 18·19·20, DESIGN.md 6장 ③ 안건별 카드)
 // 의견 → (재무 변동표·보수한도 비교) → 사유 → 근거 박스(조항 번호 + 원문) → 담당자 판단 필요 사항 순서로 보여 줍니다.
-// 담당자는 의견 고르기 칸에서 찬성/반대/불참을 직접 고를 수 있습니다. (작업 19)
-// 사유 고치기·복사는 작업 20에서 붙입니다.
+// 담당자는 의견 고르기 칸에서 찬성/반대/불참을 직접 고르고(작업 19), 사유 글상자에서 사유를 직접 고칩니다(작업 20).
 
+import { formatNumber as num, formatRate as pct, formatSigned as signed } from "@/lib/report-copy.ts";
 import { RULES, type AgendaReview, type Dividend, type FinancialRow, type Opinion, type PayLimit } from "@/lib/types.ts";
 
 /** 의견마다 다른 색 (찬성 초록, 반대 빨강, 불참 회색, 판단 보류 주황) */
@@ -12,13 +12,6 @@ const OPINION_STYLE: Record<Opinion, string> = {
   불참: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
   "판단 보류": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
 };
-
-/** 숫자를 쉼표 넣어 보여 줍니다. 빈칸이면 "-" */
-const num = (n: number | null | undefined) => (n === null || n === undefined ? "-" : n.toLocaleString("ko-KR"));
-/** 증감률을 부호와 함께 (+7.4%) */
-const pct = (n: number | null | undefined) => (n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
-/** 증감액을 부호와 함께 (+88,300) */
-const signed = (n: number | null | undefined) => (n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toLocaleString("ko-KR")}`);
 
 export function OpinionBadge({ opinion }: { opinion: Opinion }) {
   return <span className={`rounded-full px-3 py-0.5 text-sm font-semibold ${OPINION_STYLE[opinion]}`}>{opinion}</span>;
@@ -95,6 +88,10 @@ type Props = {
   originalOpinion: Opinion;
   /** 담당자가 의견을 고르면 불림 */
   onOpinionChange: (opinion: Opinion) => void;
+  /** 검토 API가 처음 쓴 사유 (담당자가 고쳤는지 보여 주기 위함) */
+  originalReason: string;
+  /** 담당자가 사유를 고치면 불림 */
+  onReasonChange: (reason: string) => void;
   /** 확인 필요 목록에서 눌렀을 때 이 카드로 이동하기 위한 이름표 */
   anchorId: string;
   /** 재무제표 안건이면 함께 보여 줄 재무 변동표·배당 */
@@ -108,6 +105,8 @@ export default function AgendaCard({
   review,
   originalOpinion,
   onOpinionChange,
+  originalReason,
+  onReasonChange,
   anchorId,
   financials,
   dividend,
@@ -116,8 +115,10 @@ export default function AgendaCard({
   const { agenda, opinion, guidelineJudgment, reason, clauses, managerChecks, payLimit } = review;
   const pending = opinion === "판단 보류";
   const changed = opinion !== originalOpinion;
+  const reasonEdited = reason !== originalReason;
   const over = reason.length > RULES.maxReasonLength;
   const selectId = `${anchorId}-opinion`;
+  const reasonId = `${anchorId}-reason`;
 
   return (
     <article
@@ -179,17 +180,24 @@ export default function AgendaCard({
         {financials && financials.length > 0 && <FinancialTable rows={financials} dividend={dividend} />}
         {payLimit && <PayLimitBox pay={payLimit} />}
 
-        {/* 사유 */}
+        {/* 사유 글상자: 직접 고칠 수 있고, 500자를 넘으면 빨간 글자로 알려 줌 */}
         <section>
-          <div className="mb-1 flex items-center justify-between text-xs text-zinc-500">
-            <span>사유</span>
+          <div className="mb-1 flex items-center justify-between gap-2 text-xs text-zinc-500">
+            <label htmlFor={reasonId}>
+              사유{reasonEdited && <span className="ml-2 text-sky-700 dark:text-sky-400">(담당자가 고침)</span>}
+            </label>
             <span className={over ? "font-semibold text-red-600" : ""}>
-              {reason.length} / {RULES.maxReasonLength}자
+              {reason.length} / {RULES.maxReasonLength}자{over && " · 500자를 넘었어요"}
             </span>
           </div>
-          <p className="whitespace-pre-wrap rounded-md border border-zinc-200 px-3 py-2 text-sm leading-6 text-zinc-800 dark:border-zinc-800 dark:text-zinc-200">
-            {reason}
-          </p>
+          <textarea
+            id={reasonId}
+            value={reason}
+            onChange={(e) => onReasonChange(e.target.value)}
+            className={`field-sizing-content min-h-24 w-full resize-y rounded-md border bg-white px-3 py-2 text-sm leading-6 text-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 ${
+              over ? "border-red-400 dark:border-red-700" : "border-zinc-200 dark:border-zinc-800"
+            }`}
+          />
         </section>
 
         {/* 근거 박스: 조항 번호와 가이드라인 원문 (사유 500자에 세지 않음) */}

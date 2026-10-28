@@ -2,7 +2,7 @@
 // PRD 규칙대로 숫자 계산은 AI에게 맡기지 않고 이 파일의 코드로만 합니다.
 // 여기서는 증감액·증감률·지분율·배당 증감을 계산하고(작업 6), 불참을 판정하고(작업 7),
 // 이사·감사 보수한도를 비교하고(작업 8), 개요표의 참석여부를 판정하고(작업 13),
-// 담당자가 화면에서 의견을 바꾸면 참석여부와 경고를 다시 판정합니다(작업 19).
+// 담당자가 화면에서 의견을 바꾸거나 사유를 고치면 참석여부와 경고를 다시 판정합니다(작업 19·20).
 // 이 파일은 서버와 브라우저(화면) 양쪽에서 씁니다. 그래서 파일 읽기 같은 서버 전용 기능은 넣지 않습니다.
 
 import type {
@@ -19,6 +19,7 @@ import type {
   Report,
   Warning,
 } from "./types.ts";
+import { RULES } from "./types.ts";
 
 /** 재무 변동표에 넣는 항목 순서 (PRD 5장) */
 export const FINANCIAL_ITEMS: FinancialItem[] = ["매출액", "영업이익", "당기순이익", "자산총계"];
@@ -213,6 +214,16 @@ export function conditionalWarnings(reviews: AgendaReview[]): Warning[] {
   return warnings;
 }
 
+/** 사유가 500자를 넘으면 "500자 초과" 경고 1개를 만듭니다. (검토 API와 화면이 같은 문구를 쓰도록 한곳에 둠) */
+export function reasonLengthWarning(agendaNumber: string, reason: string): Warning | null {
+  if (reason.length <= RULES.maxReasonLength) return null;
+  return {
+    kind: "500자 초과",
+    agendaNumber,
+    message: `${agendaNumber}: 사유가 ${reason.length}자로 ${RULES.maxReasonLength}자를 넘습니다. 줄여 주세요.`,
+  };
+}
+
 /** 불참 판정 회사가 아닌데 담당자가 모든 안건을 불참으로 정했을 때의 불참사유 칸 */
 export const MANUAL_ABSENCE_REASON = "담당자가 모든 안건을 불참으로 정했습니다. 불참사유를 확인해 주세요.";
 
@@ -224,12 +235,23 @@ export const MANUAL_ABSENCE_REASON = "담당자가 모든 안건을 불참으로
  * 1) 참석여부: 모든 안건 의견으로 다시 (판단 보류가 남으면 판정 대기)
  * 2) 불참사유: 불참이면 처음 불참사유(불참 판정 회사) 또는 "담당자가 불참으로 정함" 안내, 참석이면 "-"
  * 3) 경고: 의견을 정한 안건의 "판단 보류" 경고는 지우고, "조건부 안건" 경고는 새 의견으로 다시 만듦
- * 사유(reason)는 바꾸지 않습니다. (사유 고치기는 PLAN 작업 20)
+ * - reasons: 담당자가 고친 사유 (의안 번호 → 사유). (PLAN 작업 20)
+ *   사유를 고친 안건은 "500자 초과" 경고를 새 사유로 다시 만들고,
+ *   AI 사유를 보고 낸 "숫자 불일치" 경고는 담당자가 직접 고쳤으므로 지웁니다.
  */
-export function reapplyOpinions(base: Report, opinions: Record<string, Opinion>): Report {
+export function reapplyOpinions(
+  base: Report,
+  opinions: Record<string, Opinion>,
+  reasons: Record<string, string> = {},
+): Report {
+  const edited = new Set(
+    base.reviews.filter((r) => reasons[r.agenda.number] !== undefined && reasons[r.agenda.number] !== r.reason).map((r) => r.agenda.number),
+  );
   const reviews = base.reviews.map((r) => {
     const changed = opinions[r.agenda.number];
-    return changed && changed !== r.opinion ? { ...r, opinion: changed } : r;
+    let next = changed && changed !== r.opinion ? { ...r, opinion: changed } : r;
+    if (edited.has(r.agenda.number)) next = { ...next, reason: reasons[r.agenda.number] };
+    return next;
   });
 
   const attendance = decideAttendance(reviews.map((r) => r.opinion));
@@ -242,14 +264,20 @@ export function reapplyOpinions(base: Report, opinions: Record<string, Opinion>)
   const kept = base.warnings.filter((w) => {
     if (w.kind === "조건부 안건") return false; // 아래에서 새 의견으로 다시 만듦
     if (w.kind === "판단 보류" && w.agendaNumber && !stillPending.has(w.agendaNumber)) return false;
+    const isEdited = w.agendaNumber !== undefined && edited.has(w.agendaNumber);
+    if (isEdited && (w.kind === "500자 초과" || w.kind === "숫자 불일치")) return false; // 고친 사유로 아래에서 다시 확인
     return true;
   });
+  const lengthWarnings = reviews
+    .filter((r) => edited.has(r.agenda.number))
+    .map((r) => reasonLengthWarning(r.agenda.number, r.reason))
+    .filter((w): w is Warning => w !== null);
 
   return {
     ...base,
     overview: { ...base.overview, attendance, absenceReason: absenceText },
     reviews,
-    warnings: [...kept, ...conditionalWarnings(reviews)],
+    warnings: [...kept, ...lengthWarnings, ...conditionalWarnings(reviews)],
   };
 }
 
