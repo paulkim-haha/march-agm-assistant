@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "build:guideline": "node scripts/build-guideline.mjs",
+    "check:absence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-absence.mjs",
     "check:calc": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-calc.mjs",
     "check:guideline": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-guideline.mjs",
     "check:holdings": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-holdings.mjs"
