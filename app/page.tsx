@@ -9,7 +9,8 @@ export default function Home() {
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-1 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            3월의 안건 해결사
+            3월을 부탁해
+            <span className="ml-1 text-base font-medium text-zinc-500 dark:text-zinc-400">(AI 주총 어시스턴트)</span>
           </h1>
           <p className="text-sm text-amber-700 dark:text-amber-400">
             실습용 가상 자료만 사용하세요

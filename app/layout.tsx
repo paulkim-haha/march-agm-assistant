@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 // 브라우저 탭에 보이는 앱 이름과 설명입니다.
 export const metadata: Metadata = {
-  title: "3월의 안건 해결사",
+  title: "3월을 부탁해(AI 주총 어시스턴트)",
   description:
     "주주총회 안건을 의결권 행사 가이드라인에 맞춰 검토해 주는 도구",
 };
