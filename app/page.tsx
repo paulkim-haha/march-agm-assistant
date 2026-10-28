@@ -1,5 +1,7 @@
 // 첫 화면입니다. (DESIGN.md 6장: 머리말 → 업로드 구역 → 보고서 구역)
-// 지금은 머리말만 있고, 업로드 구역과 보고서 구역은 다음 작업에서 이 아래에 붙입니다.
+// 지금은 머리말과 업로드 구역이 있고, 보고서 구역은 PLAN 작업 18에서 이 아래에 붙입니다.
+import UploadForm from "./components/UploadForm";
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
@@ -15,11 +17,14 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
         <p className="text-zinc-600 dark:text-zinc-400">
           주주총회 소집통지서를 올리면, 의결권 행사 가이드라인에 맞춰 안건별
           검토 의견과 사유 초안을 만들어 드립니다.
         </p>
+
+        {/* ② 업로드 구역 */}
+        <UploadForm />
       </main>
     </div>
   );
