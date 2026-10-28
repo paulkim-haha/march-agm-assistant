@@ -10,8 +10,10 @@ export const RULES = {
   maxReasonLength: 500,
   /** 안건 1건당 근거 조항 최대 개수 */
   maxClauses: 3,
-  /** 업로드 파일 최대 크기 (4MB) */
+  /** 업로드 파일 크기 한도: 한 번에 올리는 파일들의 합계 (4MB, Vercel 요청 한도 4.5MB 안) */
   maxFileBytes: 4 * 1024 * 1024,
+  /** 한 번에 올릴 수 있는 파일 수 (소집통지서와 안건 자료가 나뉜 경우 등) */
+  maxFiles: 5,
 } as const;
 
 // ───────────────────────── 고를 수 있는 값 ─────────────────────────
@@ -225,7 +227,9 @@ export type Report = {
 /** 검토 API 오류 코드 (DESIGN.md 7장) */
 export type ErrorCode =
   | "NO_FILE"
+  | "TOO_MANY_FILES"
   | "FILE_TOO_LARGE"
+  | "MIXED_COMPANY"
   | "UNSUPPORTED_TYPE"
   | "BLOCKED_FILE"
   | "UNREADABLE_PDF"

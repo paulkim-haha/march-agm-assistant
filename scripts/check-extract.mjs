@@ -4,7 +4,7 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { extractUploadText, isBlockedFileName } from "../lib/extract-text.ts";
+import { extractUploadText, extractUploadTexts, isBlockedFileName } from "../lib/extract-text.ts";
 
 let failed = 0;
 function check(label, actual, expected) {
@@ -79,6 +79,45 @@ const eucKr = new Uint8Array([0xb0, 0xa1, 0xbf, 0xc2, 0x20, 0x41, 0x47, 0x4d]);
 check("EUC-KR 텍스트도 읽음", (await tryExtract("메모장.txt", eucKr)).text, "가온 AGM");
 check("윈도우 줄바꿈(\\r\\n)을 \\n으로", (await tryExtract("a.txt", enc("첫줄\r\n둘째줄"))).text, "첫줄\n둘째줄");
 check("맨 앞의 보이지 않는 표시(BOM) 제거", (await tryExtract("a.md", enc("﻿제목"))).text, "제목");
+
+// 6) 여러 파일 한꺼번에 (소집통지서와 안건 설명서가 나뉜 경우)
+console.log("\n[6] 여러 파일 한꺼번에");
+async function tryBundle(list) {
+  try {
+    return { ok: true, ...(await extractUploadTexts(list)) };
+  } catch (e) {
+    return { ok: false, code: e.code ?? String(e), message: e.message };
+  }
+}
+const load = async (f) => ({ name: f, bytes: new Uint8Array(await readFile(path.join(dir, f))) });
+const part1 = await load("06a_다온건설_소집통지서_본문.md");
+const part2 = await load("06b_다온건설_안건설명서.md");
+
+const both = await tryBundle([part1, part2]);
+check("나뉜 파일 2개 읽기 성공", both.ok, true);
+check("파일 2개가 모두 들어감", both.files?.map((f) => f.name), [part1.name, part2.name]);
+check("파일마다 머리줄이 붙음", both.text?.includes(`=== 파일: ${part1.name} ===`) && both.text.includes(`=== 파일: ${part2.name} ===`), true);
+check("합친 글자에 일시(본문)와 재무표(설명서)가 모두 있음", both.text?.includes("2027년 3월 29일") && both.text.includes("1,284,500"), true);
+
+const single = await tryBundle([part1]);
+check("파일 1개면 머리줄 없이 그대로", single.text?.startsWith("# 주식회사 다온건설"), true);
+check("같은 파일을 두 번 고르면 한 번만", (await tryBundle([part1, part1])).files?.length, 1);
+check("파일 없음", (await tryBundle([])).code, "NO_FILE");
+const six = Array.from({ length: 6 }, (_, i) => ({ name: `f${i}.txt`, bytes: enc(`내용${i}`) }));
+check("파일 6개", (await tryBundle(six)).code, "TOO_MANY_FILES");
+check(
+  "합계 4MB 초과 (2MB + 2.1MB)",
+  (await tryBundle([
+    { name: "a.txt", bytes: new Uint8Array(2 * 1024 * 1024).fill(65) },
+    { name: "b.txt", bytes: new Uint8Array(2.1 * 1024 * 1024).fill(65) },
+  ])).code,
+  "FILE_TOO_LARGE",
+);
+check("채점표가 하나라도 섞이면 막음", (await tryBundle([part1, { name: keyFile, bytes: enc("x") }])).code, "BLOCKED_FILE");
+const badMix = await tryBundle([part1, { name: "안건.pdf", bytes: enc("hello") }]);
+check("문제 파일이 있으면 그 파일 이름을 알려 줌", badMix.code === "UNREADABLE_PDF" && badMix.message.startsWith("안건.pdf:"), true);
+const emptyMix = await tryBundle([part1, { name: "빈파일.md", bytes: new Uint8Array(0) }]);
+check("빈 파일이 섞이면 그 파일 이름을 알려 줌", emptyMix.code === "NO_FILE" && emptyMix.message.startsWith("빈파일.md:"), true);
 
 console.log(failed === 0 ? "\n모두 통과했습니다." : `\n${failed}개가 틀렸습니다.`);
 process.exitCode = failed === 0 ? 0 : 1;

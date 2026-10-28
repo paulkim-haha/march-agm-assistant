@@ -1,4 +1,5 @@
 // 업로드한 소집통지서 파일에서 글자를 뽑는 파일입니다. (PLAN 작업 10, DESIGN.md 3장 ① 단계)
+// - 소집통지서와 안건 설명 자료가 다른 파일로 나뉘어 있으면 같은 회사 파일 1~5개를 한꺼번에 받아 합칩니다.
 // - PDF는 unpdf로 글자를 뽑고, 화면에 보이는 순서(위→아래, 왼쪽→오른쪽)로 다시 줄 세웁니다.
 // - .md/.txt는 UTF-8로 읽고, 깨지면 한국어 윈도우 방식(EUC-KR)으로 다시 읽습니다.
 // - 채점표 파일, 너무 큰 파일, 지원하지 않는 파일, 글자가 없는 PDF(스캔본 등)는 막고 안내합니다.
@@ -9,7 +10,9 @@ import { RULES, type ErrorCode } from "./types.ts";
 /** 화면에 보여 줄 오류 문구 (DESIGN.md 7장) */
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   NO_FILE: "소집통지서 파일을 하나 골라 주세요.",
-  FILE_TOO_LARGE: "파일이 너무 큽니다. 4MB 이하로 올려 주세요.",
+  TOO_MANY_FILES: "파일은 한 번에 5개까지 올릴 수 있습니다.",
+  FILE_TOO_LARGE: "파일이 너무 큽니다. 모두 합쳐 4MB 이하로 올려 주세요.",
+  MIXED_COMPANY: "서로 다른 회사의 파일이 섞여 있습니다. 회사 1곳의 파일만 올려 주세요.",
   UNSUPPORTED_TYPE: "PDF나 텍스트 파일만 올릴 수 있습니다.",
   BLOCKED_FILE: "채점용 파일은 올릴 수 없습니다.",
   UNREADABLE_PDF: "글자를 읽을 수 없는 파일입니다. 텍스트가 들어 있는 PDF를 올려 주세요.",
@@ -158,4 +161,57 @@ export async function extractUploadText(file: UploadedFile | null): Promise<Extr
   }
 
   return { kind, text: text.replace(/\r\n?/g, "\n").normalize("NFC").trim() };
+}
+
+/** 여러 파일을 읽은 결과 */
+export type ExtractedBundle = {
+  /** 파일마다 읽은 결과 (올린 순서대로) */
+  files: (ExtractedText & { name: string })[];
+  /**
+   * AI에게 넘길 글자 전체. 파일이 2개 이상이면 파일마다 "=== 파일: 이름 ===" 머리줄을 붙여
+   * 어느 내용이 어느 파일에서 왔는지 알 수 있게 합칩니다.
+   */
+  text: string;
+};
+
+/**
+ * 같은 회사의 파일 1~5개를 한꺼번에 읽어 하나로 합칩니다.
+ * (예: 소집통지서 본문과 안건 설명 자료가 다른 파일로 온 경우)
+ * 순서: 파일 있음 → 개수 → 채점표 없음 → 합계 크기 → 파일마다 글자 뽑기
+ * 어느 파일에서 문제가 났는지 안내 문구 앞에 파일 이름을 붙입니다.
+ * 서로 다른 회사가 섞였는지는 회사 이름을 뽑는 다음 단계(PLAN 작업 12)에서 확인합니다.
+ */
+export async function extractUploadTexts(files: UploadedFile[]): Promise<ExtractedBundle> {
+  // 똑같은 파일을 실수로 두 번 고른 경우는 한 번만 셉니다. (이름과 크기가 같으면 같은 파일로 봄)
+  const unique = files.filter(
+    (f, i) => files.findIndex((g) => g.name === f.name && g.bytes.length === f.bytes.length) === i,
+  );
+
+  if (unique.length === 0) throw new ReviewError("NO_FILE");
+  if (unique.length > RULES.maxFiles) throw new ReviewError("TOO_MANY_FILES");
+  if (unique.some((f) => isBlockedFileName(f.name))) throw new ReviewError("BLOCKED_FILE");
+  const total = unique.reduce((sum, f) => sum + f.bytes.length, 0);
+  if (total > RULES.maxFileBytes) throw new ReviewError("FILE_TOO_LARGE");
+
+  const results: ExtractedBundle["files"] = [];
+  for (const file of unique) {
+    if (file.bytes.length === 0) {
+      throw new ReviewError("NO_FILE", `${file.name}: 내용이 비어 있는 파일입니다.`);
+    }
+    try {
+      results.push({ name: file.name, ...(await extractUploadText(file)) });
+    } catch (e) {
+      // 파일이 여러 개면 어느 파일이 문제인지 알려 줍니다.
+      if (e instanceof ReviewError && unique.length > 1) {
+        throw new ReviewError(e.code, `${file.name}: ${e.message}`);
+      }
+      throw e;
+    }
+  }
+
+  const text =
+    results.length === 1
+      ? results[0].text
+      : results.map((r) => `=== 파일: ${r.name} ===\n${r.text}`).join("\n\n");
+  return { files: results, text };
 }
