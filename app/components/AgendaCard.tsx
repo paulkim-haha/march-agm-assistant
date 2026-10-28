@@ -1,6 +1,7 @@
-// 안건 1개의 검토 결과 카드입니다. (PLAN 작업 18, DESIGN.md 6장 ③ 안건별 카드)
+// 안건 1개의 검토 결과 카드입니다. (PLAN 작업 18·19, DESIGN.md 6장 ③ 안건별 카드)
 // 의견 → (재무 변동표·보수한도 비교) → 사유 → 근거 박스(조항 번호 + 원문) → 담당자 판단 필요 사항 순서로 보여 줍니다.
-// 지금은 보기만 하는 카드이고, 의견 바꾸기는 PLAN 작업 19, 사유 고치기·복사는 작업 20에서 붙입니다.
+// 담당자는 의견 고르기 칸에서 찬성/반대/불참을 직접 고를 수 있습니다. (작업 19)
+// 사유 고치기·복사는 작업 20에서 붙입니다.
 
 import { RULES, type AgendaReview, type Dividend, type FinancialRow, type Opinion, type PayLimit } from "@/lib/types.ts";
 
@@ -85,8 +86,15 @@ function PayLimitBox({ pay }: { pay: PayLimit }) {
   );
 }
 
+/** 담당자가 고를 수 있는 의견 */
+const CHOICES: Opinion[] = ["찬성", "반대", "불참"];
+
 type Props = {
   review: AgendaReview;
+  /** 검토 API가 처음 정한 의견 (담당자가 바꿨는지 보여 주기 위함) */
+  originalOpinion: Opinion;
+  /** 담당자가 의견을 고르면 불림 */
+  onOpinionChange: (opinion: Opinion) => void;
   /** 확인 필요 목록에서 눌렀을 때 이 카드로 이동하기 위한 이름표 */
   anchorId: string;
   /** 재무제표 안건이면 함께 보여 줄 재무 변동표·배당 */
@@ -96,10 +104,20 @@ type Props = {
   isSub: boolean;
 };
 
-export default function AgendaCard({ review, anchorId, financials, dividend, isSub }: Props) {
+export default function AgendaCard({
+  review,
+  originalOpinion,
+  onOpinionChange,
+  anchorId,
+  financials,
+  dividend,
+  isSub,
+}: Props) {
   const { agenda, opinion, guidelineJudgment, reason, clauses, managerChecks, payLimit } = review;
   const pending = opinion === "판단 보류";
+  const changed = opinion !== originalOpinion;
   const over = reason.length > RULES.maxReasonLength;
+  const selectId = `${anchorId}-opinion`;
 
   return (
     <article
@@ -112,13 +130,44 @@ export default function AgendaCard({ review, anchorId, financials, dividend, isS
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
           {agenda.number} {agenda.title}
         </h3>
-        <OpinionBadge opinion={opinion} />
+        <div className="flex items-center gap-2">
+          <OpinionBadge opinion={opinion} />
+          {/* 의견 고르기 칸: 판단 보류 안건은 "의견을 골라 주세요"부터 보임 */}
+          <label htmlFor={selectId} className="sr-only">
+            {agenda.number} 의견 고르기
+          </label>
+          <select
+            id={selectId}
+            value={pending ? "" : opinion}
+            onChange={(e) => onOpinionChange(e.target.value as Opinion)}
+            className={`rounded-md border bg-white px-2 py-1 text-sm dark:bg-zinc-900 ${
+              pending ? "border-red-400 dark:border-red-700" : "border-zinc-300 dark:border-zinc-700"
+            }`}
+          >
+            {pending && (
+              <option value="" disabled>
+                의견을 골라 주세요
+              </option>
+            )}
+            {CHOICES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
-      {/* 불참 회사는 가이드라인 기준 판단도 함께 보여 줌 */}
-      {opinion === "불참" && (
+      {/* 담당자가 의견을 바꿨으면 처음 의견과 함께 알려 줌 */}
+      {changed && (
+        <p className="mt-1 text-sm text-sky-700 dark:text-sky-400">
+          담당자가 의견을 바꿨습니다 (처음 의견: {originalOpinion}). 사유가 새 의견과 맞는지 확인해 주세요.
+        </p>
+      )}
+      {/* 가이드라인 기준 판단과 의견이 다르면 함께 보여 줌 (불참 회사 등) */}
+      {!pending && guidelineJudgment !== "판단 보류" && guidelineJudgment !== opinion && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          가이드라인 기준 판단: <strong>{guidelineJudgment}</strong> → 의견: 불참
+          가이드라인 기준 판단: <strong>{guidelineJudgment}</strong> → 의견: {opinion}
         </p>
       )}
       {pending && <p className="mt-1 text-sm font-medium text-red-700 dark:text-red-400">담당자가 의견을 정해 주세요.</p>}

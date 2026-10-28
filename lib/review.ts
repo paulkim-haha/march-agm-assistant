@@ -10,6 +10,7 @@ import {
   buildFinancialTable,
   compareAuditorPayLimit,
   compareDirectorPayLimit,
+  conditionalWarnings,
   decideAttendance,
   isAbsenceCompany,
 } from "./calc.ts";
@@ -638,18 +639,8 @@ export async function writeOpinions(
   });
 
   // 5) 조건부 안건: 조건이 된 안건이 반대면 경고 (불참 회사는 모두 불참이라 해당 없음)
-  for (const r of reviews) {
-    const cond = r.agenda.conditionNumber;
-    if (!cond) continue;
-    const base = reviews.find((x) => x.agenda.number === cond);
-    if (base?.opinion === "반대") {
-      warnings.push({
-        kind: "조건부 안건",
-        agendaNumber: r.agenda.number,
-        message: `${r.agenda.number}은(는) ${cond}이(가) 가결돼야 상정됩니다. ${cond}에 반대하므로 두 의견이 서로 맞는지 확인해 주세요.`,
-      });
-    }
-  }
+  //    화면에서 의견을 바꿀 때도 같은 규칙을 쓰도록 calc.ts의 함수를 씀
+  warnings.push(...conditionalWarnings(reviews));
 
   return { reviews, financials, ...(dividend ? { dividend } : {}), warnings };
 }

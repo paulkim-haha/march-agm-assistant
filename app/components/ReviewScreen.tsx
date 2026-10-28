@@ -11,12 +11,19 @@ import UploadForm from "./UploadForm";
 
 export default function ReviewScreen() {
   const [report, setReport] = useState<Report | null>(null);
+  // 새 검토를 할 때마다 번호를 올려, 보고서 구역이 앞 보고서에서 바꾼 의견을 들고 오지 않게 함
+  const [round, setRound] = useState(0);
   return (
     <>
       {/* ② 업로드 구역 */}
-      <UploadForm onReport={setReport} />
+      <UploadForm
+        onReport={(r) => {
+          setReport(r);
+          setRound((n) => n + 1);
+        }}
+      />
       {/* ③ 보고서 구역 (검토가 끝나면 나타남) */}
-      {report && <ReportView report={report} />}
+      {report && <ReportView key={round} report={report} />}
     </>
   );
 }

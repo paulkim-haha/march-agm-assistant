@@ -1,8 +1,13 @@
-// 보고서 구역입니다. (PLAN 작업 18, DESIGN.md 6장 ③)
+"use client";
+
+// 보고서 구역입니다. (PLAN 작업 18·19, DESIGN.md 6장 ③)
 // 주주총회 개요표 → ⚠ 확인 필요 목록 → 안건별 카드 순서로 회사 1곳의 보고서 1개를 보여 줍니다.
 // 상위 안건(예: 제2호 이사 선임의 건)은 의견 없이 제목줄로만 보여 주고, 하위 안건 카드는 들여 씁니다.
+// 담당자가 카드에서 의견을 바꾸면 참석여부·불참사유·경고를 바로 다시 판정합니다. (작업 19)
 
-import type { Report, Warning } from "@/lib/types.ts";
+import { useState } from "react";
+import { reapplyOpinions } from "@/lib/calc.ts";
+import type { Opinion, Report, Warning } from "@/lib/types.ts";
 import AgendaCard, { OpinionBadge } from "./AgendaCard";
 
 /** 의안 번호로 카드 이름표를 만듭니다. (화면 안에서 이동할 때 씀) */
@@ -15,16 +20,33 @@ function warningColor(w: Warning): string {
   return "text-amber-800 dark:text-amber-300";
 }
 
-export default function ReportView({ report }: { report: Report }) {
+export default function ReportView({ report: base }: { report: Report }) {
+  // 담당자가 바꾼 의견 (의안 번호 → 의견). 처음 받은 보고서(base)는 그대로 두고 화면에 보일 보고서를 새로 계산
+  const [opinions, setOpinions] = useState<Record<string, Opinion>>({});
+  const report = reapplyOpinions(base, opinions);
+  const originalOpinion = new Map(base.reviews.map((r) => [r.agenda.number, r.opinion]));
+
   const { overview, reviews, warnings, financials, dividend } = report;
   const byNumber = new Map(reviews.map((r) => [r.agenda.number, r]));
+  const changedCount = reviews.filter((r) => r.opinion !== originalOpinion.get(r.agenda.number)).length;
   // 화면에 보일 순서: 개요표 부의안건 순서 (상위 안건 제목줄 포함)
   const lines = overview.agendaLines;
   const indexOf = new Map(lines.map((l, i) => [l.number, i]));
 
   return (
     <section className="flex flex-col gap-6" aria-label="검토 보고서">
-      <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{report.companyName} 검토 보고서</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{report.companyName} 검토 보고서</h2>
+        {changedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpinions({})}
+            className="rounded-md border border-zinc-300 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            바꾼 의견 {changedCount}개 되돌리기
+          </button>
+        )}
+      </div>
 
       {/* ■ 주주총회 개요표 */}
       <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -108,6 +130,8 @@ export default function ReportView({ report }: { report: Report }) {
             <AgendaCard
               key={l.number}
               review={review}
+              originalOpinion={originalOpinion.get(l.number) ?? review.opinion}
+              onOpinionChange={(o) => setOpinions((prev) => ({ ...prev, [l.number]: o }))}
               anchorId={anchorOf(i)}
               isSub={l.isSub}
               {...(isFinancial ? { financials, dividend } : {})}

@@ -1,9 +1,12 @@
 // 숫자 계산을 모아 둔 파일입니다. (PLAN 작업 6)
 // PRD 규칙대로 숫자 계산은 AI에게 맡기지 않고 이 파일의 코드로만 합니다.
 // 여기서는 증감액·증감률·지분율·배당 증감을 계산하고(작업 6), 불참을 판정하고(작업 7),
-// 이사·감사 보수한도를 비교하고(작업 8), 개요표의 참석여부를 판정합니다(작업 13).
+// 이사·감사 보수한도를 비교하고(작업 8), 개요표의 참석여부를 판정하고(작업 13),
+// 담당자가 화면에서 의견을 바꾸면 참석여부와 경고를 다시 판정합니다(작업 19).
+// 이 파일은 서버와 브라우저(화면) 양쪽에서 씁니다. 그래서 파일 읽기 같은 서버 전용 기능은 넣지 않습니다.
 
 import type {
+  AgendaReview,
   Attendance,
   Dividend,
   FinancialItem,
@@ -13,6 +16,8 @@ import type {
   LossLabel,
   Opinion,
   PayLimit,
+  Report,
+  Warning,
 } from "./types.ts";
 
 /** 재무 변동표에 넣는 항목 순서 (PRD 5장) */
@@ -185,6 +190,67 @@ export function decideAttendance(opinions: Opinion[]): Attendance {
   if (opinions.length === 0 || opinions.includes("판단 보류")) return "판정 대기";
   if (opinions.every((o) => o === "불참")) return "불참";
   return "참석";
+}
+
+/**
+ * 조건부 안건 경고: "제○호가 가결돼야 상정되는" 안건인데 조건이 된 안건의 의견이 반대이면 경고합니다.
+ * (PRD 5장 must 2) 서버(첫 검토)와 화면(의견을 바꿀 때)이 같은 규칙을 씁니다.
+ */
+export function conditionalWarnings(reviews: AgendaReview[]): Warning[] {
+  const warnings: Warning[] = [];
+  for (const r of reviews) {
+    const cond = r.agenda.conditionNumber;
+    if (!cond) continue;
+    const base = reviews.find((x) => x.agenda.number === cond);
+    if (base?.opinion === "반대") {
+      warnings.push({
+        kind: "조건부 안건",
+        agendaNumber: r.agenda.number,
+        message: `${r.agenda.number}은(는) ${cond}이(가) 가결돼야 상정됩니다. ${cond}에 반대하므로 두 의견이 서로 맞는지 확인해 주세요.`,
+      });
+    }
+  }
+  return warnings;
+}
+
+/** 불참 판정 회사가 아닌데 담당자가 모든 안건을 불참으로 정했을 때의 불참사유 칸 */
+export const MANUAL_ABSENCE_REASON = "담당자가 모든 안건을 불참으로 정했습니다. 불참사유를 확인해 주세요.";
+
+/**
+ * 담당자가 화면에서 의견을 바꾼 뒤 보고서를 다시 판정합니다. (PLAN 작업 19)
+ * - base: 검토 API가 처음 돌려준 보고서 (바뀌지 않음)
+ * - opinions: 담당자가 바꾼 의견 (의안 번호 → 의견). 없는 안건은 처음 의견 그대로
+ * 다시 판정하는 것
+ * 1) 참석여부: 모든 안건 의견으로 다시 (판단 보류가 남으면 판정 대기)
+ * 2) 불참사유: 불참이면 처음 불참사유(불참 판정 회사) 또는 "담당자가 불참으로 정함" 안내, 참석이면 "-"
+ * 3) 경고: 의견을 정한 안건의 "판단 보류" 경고는 지우고, "조건부 안건" 경고는 새 의견으로 다시 만듦
+ * 사유(reason)는 바꾸지 않습니다. (사유 고치기는 PLAN 작업 20)
+ */
+export function reapplyOpinions(base: Report, opinions: Record<string, Opinion>): Report {
+  const reviews = base.reviews.map((r) => {
+    const changed = opinions[r.agenda.number];
+    return changed && changed !== r.opinion ? { ...r, opinion: changed } : r;
+  });
+
+  const attendance = decideAttendance(reviews.map((r) => r.opinion));
+  let absenceText = "-";
+  if (attendance === "불참") {
+    absenceText = base.overview.absenceReason !== "-" ? base.overview.absenceReason : MANUAL_ABSENCE_REASON;
+  }
+
+  const stillPending = new Set(reviews.filter((r) => r.opinion === "판단 보류").map((r) => r.agenda.number));
+  const kept = base.warnings.filter((w) => {
+    if (w.kind === "조건부 안건") return false; // 아래에서 새 의견으로 다시 만듦
+    if (w.kind === "판단 보류" && w.agendaNumber && !stillPending.has(w.agendaNumber)) return false;
+    return true;
+  });
+
+  return {
+    ...base,
+    overview: { ...base.overview, attendance, absenceReason: absenceText },
+    reviews,
+    warnings: [...kept, ...conditionalWarnings(reviews)],
+  };
 }
 
 // ───────────────────────── 보수한도 비교 (PLAN 작업 8) ─────────────────────────
