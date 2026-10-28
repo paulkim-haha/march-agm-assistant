@@ -227,7 +227,11 @@ export type Report = {
   /** 이해관계인 지분이 2/3 이상이라 불참 판정된 회사인지 */
   isAbsenceCompany: boolean;
   overview: Overview;
-  /** 안건별 검토 결과 (상위 안건 제목줄 포함, 의안 번호 순서) */
+  /**
+   * 의견을 매긴 안건의 검토 결과 (의안 번호 순서).
+   * 하위 안건을 묶기만 하는 상위 안건(예: 제2호)은 넣지 않고, 화면은 개요표 agendaLines와
+   * 안건의 parentNumber로 제목줄을 보여 줍니다. (참석여부를 셀 때 상위 안건이 섞이지 않게)
+   */
   reviews: AgendaReview[];
   /** 재무 변동표 (재무제표 안건이 없거나 표가 없으면 빈 배열) */
   financials: FinancialRow[];
@@ -251,7 +255,8 @@ export type ErrorCode =
   | "NO_AGENDA"
   | "DATA_MISSING"
   | "AI_BAD_RESPONSE"
-  | "AI_UNAVAILABLE";
+  | "AI_UNAVAILABLE"
+  | "INTERNAL_ERROR";
 
 /** 검토 API 응답: 성공이면 report, 실패면 error 중 하나만 옴 */
 export type ReviewResponse =

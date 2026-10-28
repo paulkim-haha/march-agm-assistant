@@ -1,6 +1,6 @@
 // 검토 단계(DESIGN.md 3장 ①~⑥)를 차례로 잇는 파일입니다.
-// 지금은 ② 정보 뽑기(PLAN 작업 12), 개요표 만들기(작업 13), ④ 조항 대조(작업 14), ⑤ 의견·사유(작업 15)가 있고,
-// 단계를 한 번에 잇는 일은 작업 16에서 추가합니다.
+// ② 정보 뽑기(PLAN 작업 12), 개요표 만들기(작업 13), ④ 조항 대조(작업 14), ⑤ 의견·사유(작업 15)와,
+// 이 단계들을 한 번에 이어 보고서 1개를 만드는 runReview(작업 16)가 있습니다.
 
 import { askAiJson, type FetchLike } from "./ai.ts";
 import {
@@ -13,10 +13,10 @@ import {
   decideAttendance,
   isAbsenceCompany,
 } from "./calc.ts";
-import type { ExtractedBundle } from "./extract-text.ts";
-import { ReviewError } from "./extract-text.ts";
-import { checkClauseIds, clausesForType } from "./guideline.ts";
-import { findHolding, normalizeCompanyName } from "./holdings.ts";
+import type { ExtractedBundle, UploadedFile } from "./extract-text.ts";
+import { ReviewError, extractUploadTexts } from "./extract-text.ts";
+import { checkClauseIds, clausesForType, loadGuideline } from "./guideline.ts";
+import { DataMissingError, findHolding, loadHoldings, normalizeCompanyName } from "./holdings.ts";
 import {
   CLAUSE_SYSTEM,
   NOTICE_SYSTEM,
@@ -43,6 +43,7 @@ import {
   type Opinion,
   type Overview,
   type PayLimit,
+  type Report,
   type Warning,
 } from "./types.ts";
 
@@ -651,4 +652,86 @@ export async function writeOpinions(
   }
 
   return { reviews, financials, ...(dividend ? { dividend } : {}), warnings };
+}
+
+// ───────────────────────── ①~⑥ 한 번에 실행 (PLAN 작업 16) ─────────────────────────
+
+/** 단계별 걸린 시간 (서버 기록용, 밀리초) */
+export type ReviewTimings = Record<"read" | "notice" | "clauses" | "opinions" | "total", number>;
+
+/**
+ * 업로드 파일로 검토 전체를 실행해 보고서 1개를 만듭니다. (DESIGN.md 3장 ①~⑥)
+ * ① 글자 뽑기 → ② 정보 뽑기(AI) → 개요표 → ④ 조항 대조(AI) → ⑤ 의견·사유(AI)
+ * → ⑥ 의견으로 참석여부를 다시 판정하고, 단계마다 나온 경고를 모아 보고서로 조립
+ * 문제가 있으면 ReviewError를 냅니다. (탑재 자료가 없으면 DATA_MISSING)
+ */
+export async function runReview(
+  files: UploadedFile[],
+  fetchImpl?: FetchLike,
+): Promise<{ report: Report; timings: ReviewTimings }> {
+  const t0 = Date.now();
+  const mark = () => Date.now() - t0;
+
+  // ① 글자 뽑기 (파일 문제는 AI를 부르기 전에 바로 안내)
+  const bundle = await extractUploadTexts(files);
+
+  // 앱에 탑재된 자료 읽기
+  let holdings: Holding[];
+  let guideline: GuidelineClause[];
+  try {
+    [holdings, guideline] = await Promise.all([loadHoldings(), loadGuideline()]);
+  } catch (e) {
+    if (e instanceof DataMissingError) {
+      console.error(`[review] 탑재 자료 오류: ${e.message}`);
+      throw new ReviewError("DATA_MISSING");
+    }
+    throw e;
+  }
+  const read = mark();
+
+  // ② 정보 뽑기 + 개요표 (불참 판정 포함)
+  const notice = await extractNotice(bundle, fetchImpl);
+  const first = buildOverview(notice, holdings);
+  const noticeDone = mark();
+
+  // ④ 조항 대조
+  const clauseStep = await matchClauses(notice, guideline, fetchImpl);
+  const clausesDone = mark();
+
+  // ⑤ 의견·사유
+  const opinionStep = await writeOpinions(notice, clauseStep, first, guideline, fetchImpl);
+  const opinionsDone = mark();
+
+  // ⑥ 의견이 정해졌으니 참석여부를 다시 판정 (불참 회사는 그대로 불참)
+  const final = buildOverview(
+    notice,
+    holdings,
+    opinionStep.reviews.map((r) => r.opinion),
+  );
+
+  // 경고 모으기: 같은 문구는 한 번만, 회사 전체 경고 → 안건 경고(의안 번호 순) 순서
+  const order = new Map(notice.agendas.map((a, i) => [a.number, i]));
+  const seen = new Set<string>();
+  const warnings = [...notice.warnings, ...final.warnings, ...clauseStep.warnings, ...opinionStep.warnings]
+    .filter((w) => {
+      const key = `${w.kind}|${w.agendaNumber ?? ""}|${w.message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => (a.agendaNumber ? order.get(a.agendaNumber) ?? 999 : -1) - (b.agendaNumber ? order.get(b.agendaNumber) ?? 999 : -1));
+
+  const report: Report = {
+    companyName: notice.info.companyName,
+    isAbsenceCompany: final.isAbsenceCompany,
+    overview: final.overview,
+    reviews: opinionStep.reviews,
+    financials: opinionStep.financials,
+    ...(opinionStep.dividend ? { dividend: opinionStep.dividend } : {}),
+    warnings,
+  };
+  return {
+    report,
+    timings: { read, notice: noticeDone - read, clauses: clausesDone - noticeDone, opinions: opinionsDone - clausesDone, total: mark() },
+  };
 }

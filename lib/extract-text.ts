@@ -20,6 +20,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   DATA_MISSING: "앱에 탑재된 자료를 찾지 못했습니다. 관리자에게 문의하세요.",
   AI_BAD_RESPONSE: "AI 답을 해석하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   AI_UNAVAILABLE: "AI 서비스에 연결하지 못했습니다. 관리자에게 문의하세요.",
+  INTERNAL_ERROR: "검토 중에 예상하지 못한 오류가 났습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 /** 검토를 멈춰야 하는 오류. code는 검토 API가 그대로 화면에 돌려줍니다. */
