@@ -18,6 +18,8 @@
     "check:guideline": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-guideline.mjs",
     "check:notice": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-notice.mjs",
     "check:notice:live": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-notice.mjs --live",
+    "check:opinions": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-opinions.mjs",
+    "check:opinions:live": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-opinions.mjs --live",
     "check:overview": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-overview.mjs",
     "check:overview:live": "node --conditions=react-server --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-overview.mjs --live",
     "check:paylimit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-paylimit.mjs",

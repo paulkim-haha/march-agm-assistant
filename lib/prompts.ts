@@ -1,5 +1,5 @@
 // AI에게 줄 지시문과 AI 답의 모양을 모아 둔 파일입니다. (DESIGN.md 3장 ②④⑤)
-// ② 정보 뽑기(PLAN 작업 12), ④ 조항 고르기(작업 14)가 있고, ⑤ 사유 쓰기는 작업 15에서 추가합니다.
+// ② 정보 뽑기(PLAN 작업 12), ④ 조항 고르기(작업 14), ⑤ 의견·사유 쓰기(작업 15)가 있습니다.
 
 import { z } from "zod";
 import { AGENDA_TYPES } from "./types.ts";
@@ -130,4 +130,75 @@ export function clauseUserPrompt(
     .join("\n\n");
   const clauseText = clauses.map((c) => `[${c.id}] (${c.title}) ${c.body}`).join("\n");
   return `다음 안건마다 근거 조항을 골라 주세요.\n\n===== 안건 =====\n${agendaText}\n\n===== 가이드라인 조항 목록 =====\n${clauseText}`;
+}
+
+// ───────────────────────── ⑤ 의견·사유 쓰기 ─────────────────────────
+
+/** ⑤ 의견·사유 쓰기에서 AI가 돌려줄 답의 모양 */
+export const opinionSchema = z.object({
+  opinions: z.array(
+    z.object({
+      agendaNumber: z.string().describe("의안 번호 (예: '제2-1호')"),
+      judgment: z.enum(["찬성", "반대"]).describe("가이드라인 근거 조항에 따른 판단"),
+      reason: z.string().describe("검토 사유. 500자 이내. 근거 조항 번호와 자료의 구체적 사실을 들어 쓴다"),
+      summary: z.string().describe("판단 요지를 한 구절로 (100자 이내, 예: '외부감사인의 감사의견이 적정이므로 재무제표 승인')"),
+      managerChecks: z
+        .array(z.string())
+        .describe("이사·감사·감사위원 선임 안건에서 자료만으로 판단할 수 없어 담당자가 확인해야 할 사항. 없으면 빈 배열"),
+    }),
+  ),
+});
+
+export type OpinionAnswer = z.infer<typeof opinionSchema>;
+
+/** ⑤ 의견·사유 쓰기 지시문 */
+export const OPINION_SYSTEM = `너는 금융투자협회 「자산운용사 의결권 행사 가이드라인」에 따라 주주총회 안건의 검토 의견과 사유를 쓰는 담당자다.
+반드시 지킬 규칙:
+1. 안건마다 주어진 근거 조항 원문과 자료의 사실만으로 찬성 또는 반대를 정한다.
+   근거 조항이 정한 반대 사유 중 하나라도 자료의 사실에 해당하면 반대한다.
+2. 근거 조항에 숫자 기준(예: 이사회 출석 3/4 이상, 사외이사 재직 6년 이상, 다른 회사 이사 2개 이상 겸임, 발행주식의 2% 초과, 희석 10% 이상)이 있으면
+   자료의 사실을 그 기준과 하나씩 비교하고, 해당하는지 아닌지를 사유에 적는다.
+   - "초과"는 같은 값을 포함하지 않는다 (2.0%는 "2% 초과"에 해당하지 않음). "이상"은 같은 값을 포함한다.
+   - 출석률 72%는 3/4(75%)에 못 미친다.
+   - 재직 기간은 최초 선임 시점부터 "이번 주주총회 일시"까지로 따진다. (예: 2021년 3월 최초 선임 → 2027년 3월이면 6년)
+   - 자료에 비율이나 수량이 적혀 있으면 "자료가 없다"고 하지 말고 그 값으로 비교한다.
+3. 증감액·증감률·지분율은 주어진 "계산 결과"를 그대로 쓴다. 직접 다시 계산하거나 자료에 없는 숫자를 만들지 않는다.
+4. 사유는 500자 이내로, 필요한 만큼만 쓴다. 근거 조항 번호(예: 3.3.1))와 그 조항에 해당하는 구체적 사실을 함께 적는다.
+5. 계산 결과에 "적정성 추가 검토 필요", "담당자 별도 검토 필요", "판단 불가" 표시가 있으면 사유에 그 사실을 밝힌다.
+6. 영업이익과 당기순이익의 방향이 엇갈린다고 표시된 보수한도 안건은 두 지표의 증감을 각각 적고 종합 판단의 근거를 밝힌다.
+7. 이사·감사·감사위원 선임 안건에서 자료에 "별도 기재 없음"이거나 적혀 있지 않아 판단할 수 없는 확인 항목(겸직, 거래관계, 외부감사인 관계, 결격사유 등)은 사유에 섞지 말고 managerChecks에 따로 적는다.
+8. 다른 안건이 가결돼야 상정되는 조건부 안건은 사유에 그 관계를 적고, 같은 후보를 다루는 조건 안건과 판단이 서로 맞게 한다 (예: 사외이사로 부적격이면 감사위원으로도 반대).
+9. 지분율이나 불참 여부는 쓰지 않는다. (코드가 따로 처리한다)
+10. summary에는 판단 요지만 한 구절로 쓴다.`;
+
+/** ⑤ 의견·사유 쓰기 요청 글 */
+export function opinionUserPrompt(
+  agendas: {
+    number: string;
+    title: string;
+    type: string;
+    content: string;
+    facts: string;
+    computed: string;
+    clauses: { id: string; title: string; body: string }[];
+  }[],
+): string {
+  const text = agendas
+    .map(
+      (a) =>
+        `■ ${a.number} ${a.title}\n- 유형: ${a.type}\n- 내용: ${a.content || "(내용 없음)"}` +
+        (a.facts ? `\n- 참고 사실: ${a.facts}` : "") +
+        (a.computed ? `\n- 계산 결과(코드가 계산함, 그대로 쓸 것): ${a.computed}` : "") +
+        `\n- 근거 조항:\n${a.clauses.map((c) => `  [${c.id}] (${c.title}) ${c.body}`).join("\n")}`,
+    )
+    .join("\n\n");
+  return `다음 안건마다 검토 의견과 사유를 써 주세요.\n\n${text}`;
+}
+
+/** ⑤ 500자를 넘은 사유를 다시 쓰게 하는 요청 글 */
+export function shortenUserPrompt(items: { number: string; reason: string }[]): string {
+  return (
+    `아래 사유가 500자를 넘습니다. 판단과 근거 조항은 그대로 두고, 사유만 500자 이내로 줄여 같은 모양의 JSON으로 다시 써 주세요.\n\n` +
+    items.map((i) => `■ ${i.number} (${i.reason.length}자)\n${i.reason}`).join("\n\n")
+  );
 }

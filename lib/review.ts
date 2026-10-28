@@ -1,9 +1,18 @@
 // 검토 단계(DESIGN.md 3장 ①~⑥)를 차례로 잇는 파일입니다.
-// 지금은 ② 정보 뽑기(PLAN 작업 12), 개요표 만들기(작업 13), ④ 조항 대조(작업 14)가 있고,
-// 나머지 단계는 작업 15~16에서 이어서 추가합니다.
+// 지금은 ② 정보 뽑기(PLAN 작업 12), 개요표 만들기(작업 13), ④ 조항 대조(작업 14), ⑤ 의견·사유(작업 15)가 있고,
+// 단계를 한 번에 잇는 일은 작업 16에서 추가합니다.
 
 import { askAiJson, type FetchLike } from "./ai.ts";
-import { absenceReason, decideAttendance, isAbsenceCompany } from "./calc.ts";
+import {
+  absenceOpinionReason,
+  absenceReason,
+  buildDividend,
+  buildFinancialTable,
+  compareAuditorPayLimit,
+  compareDirectorPayLimit,
+  decideAttendance,
+  isAbsenceCompany,
+} from "./calc.ts";
 import type { ExtractedBundle } from "./extract-text.ts";
 import { ReviewError } from "./extract-text.ts";
 import { checkClauseIds, clausesForType } from "./guideline.ts";
@@ -11,13 +20,31 @@ import { findHolding, normalizeCompanyName } from "./holdings.ts";
 import {
   CLAUSE_SYSTEM,
   NOTICE_SYSTEM,
+  OPINION_SYSTEM,
   clauseMatchSchema,
   clauseUserPrompt,
   noticeInfoSchema,
   noticeUserPrompt,
+  opinionSchema,
+  opinionUserPrompt,
+  shortenUserPrompt,
   type NoticeInfo,
+  type OpinionAnswer,
 } from "./prompts.ts";
-import type { Agenda, CitedClause, GuidelineClause, Holding, Opinion, Overview, Warning } from "./types.ts";
+import {
+  RULES,
+  type Agenda,
+  type AgendaReview,
+  type CitedClause,
+  type Dividend,
+  type FinancialRow,
+  type GuidelineClause,
+  type Holding,
+  type Opinion,
+  type Overview,
+  type PayLimit,
+  type Warning,
+} from "./types.ts";
 
 // ───────────────────────── 원문 대조 도우미 ─────────────────────────
 
@@ -87,6 +114,8 @@ export type NoticeStep = {
   agendas: Agenda[];
   /** 확인 필요 목록에 넣을 경고 */
   warnings: Warning[];
+  /** 업로드 자료의 글자 전체 (뒤 단계에서 사유 속 숫자를 대조할 때 씀) */
+  sourceText: string;
 };
 
 /**
@@ -202,7 +231,7 @@ export async function extractNotice(bundle: ExtractedBundle, fetchImpl?: FetchLi
   for (const p of info.payLimits) p.agendaNumber = normalizeAgendaNumber(p.agendaNumber) ?? p.agendaNumber;
   for (const c of info.candidates) c.agendaNumber = normalizeAgendaNumber(c.agendaNumber) ?? c.agendaNumber;
 
-  return { info, agendas, warnings };
+  return { info, agendas, warnings, sourceText: bundle.text };
 }
 
 // ───────────────────────── 개요표 만들기 (PLAN 작업 13) ─────────────────────────
@@ -308,6 +337,8 @@ function factsFor(agenda: Agenda, info: NoticeInfo): string {
     }
   }
   if (agenda.conditionNumber) facts.push(`${agenda.conditionNumber}이(가) 가결되는 경우에만 상정되는 안건`);
+  // 재직 기간 같은 기간 기준을 따질 때 기준이 되는 날
+  if (info.meetingDateTime) facts.push(`이번 주주총회 일시: ${info.meetingDateTime}`);
   return facts.join(" / ");
 }
 
@@ -366,4 +397,250 @@ export async function matchClauses(
     }
   }
   return { byAgenda, warnings };
+}
+
+// ───────────────────────── ⑤ 의견·사유 쓰기 (PLAN 작업 15, must 2) ─────────────────────────
+
+/** ⑤ 의견·사유 쓰기 결과 */
+export type OpinionStep = {
+  /** 의견을 매긴 안건의 검토 결과 (상위 안건 제목줄은 빠짐, 의안 번호 순서) */
+  reviews: AgendaReview[];
+  /** 재무 변동표 (별도 기준, 재무표가 없으면 빈 배열) */
+  financials: FinancialRow[];
+  /** 주당배당금 비교 (배당 자료가 없으면 없음) */
+  dividend?: Dividend;
+  /** 확인 필요 목록에 넣을 경고 */
+  warnings: Warning[];
+};
+
+/** 숫자를 쉼표 넣어 보여 줍니다. (빈칸이면 "?") */
+const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "?" : n.toLocaleString("ko-KR"));
+/** 증감률을 부호와 함께 보여 줍니다. (+7.4%) */
+const pct = (n: number | null | undefined) => (n === null || n === undefined ? "?" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
+
+/** 재무 변동표를 AI에게 넘길 한 줄 글로 바꿉니다. */
+function financialText(rows: FinancialRow[]): string {
+  return rows
+    .filter((r) => r.current !== null || r.previous !== null)
+    .map((r) => {
+      const rate = r.lossLabel && r.changeRate === null ? r.lossLabel : `${pct(r.changeRate)}${r.lossLabel ? `, ${r.lossLabel}` : ""}`;
+      return `${r.item} ${fmt(r.previous)} → ${fmt(r.current)} (증감 ${r.change !== null && r.change > 0 ? "+" : ""}${fmt(r.change)}, ${rate})`;
+    })
+    .join("; ");
+}
+
+/** 보수한도 비교 결과를 AI에게 넘길 한 줄 글로 바꿉니다. */
+function payLimitText(p: PayLimit): string {
+  let s = `${p.target} 보수한도 ${fmt(p.previous)}억 원 → ${fmt(p.current)}억 원 (${pct(p.changeRate)})`;
+  if (p.target === "이사") s += `, 영업이익 ${pct(p.operatingIncomeRate)}, 당기순이익 ${pct(p.netIncomeRate)}`;
+  if (p.mixedDirection) s += ", 영업이익과 당기순이익의 방향이 엇갈림";
+  s += p.flag ? ` → 표시: ${p.flag}` : " → 표시 없음";
+  return s;
+}
+
+/**
+ * 사유에 나온 숫자가 자료·조항·계산 결과 어딘가에 있는지 확인합니다. 없는 숫자 목록을 돌려줍니다.
+ * 지어내면 문제가 되는 "금액·비율" 모양의 숫자만 봅니다: 쉼표가 있거나(1,284,500), 소수점이 있거나(33.3),
+ * 네 자리 이상인 숫자. 연도(2027)·날짜(2027.3)와 작은 정수(3호, 6년, 75%)는 보지 않습니다.
+ */
+function unknownNumbers(reason: string, allowedText: string): string[] {
+  const withoutDates = reason.replace(/(19|20)\d{2}[.년\-/]\s?\d{1,2}(?:[.월\-/]\s?\d{1,2})?/g, " ");
+  const found = (withoutDates.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).filter((n) => {
+    const plain = n.replace(/,/g, "");
+    if (/^(19|20)\d{2}$/.test(plain)) return false; // 연도
+    return n.includes(",") || n.includes(".") || plain.length >= 4;
+  });
+  return [...new Set(found)].filter((n) => {
+    const plain = n.replace(/,/g, "");
+    return !numberAppears(Number(plain), allowedText) && !allowedText.includes(n);
+  });
+}
+
+/**
+ * ⑤ 안건마다 의견과 사유 초안을 만듭니다. (PRD 5장 must 2)
+ * - 코드가 먼저 계산: 재무 변동표·배당(작업 6), 보수한도 비교(작업 8)
+ * - AI 1번 호출: 근거 조항이 있는 안건만 보냄 (조항이 없는 안건은 "판단 보류"로 담당자에게 넘김)
+ *   AI는 찬성/반대만 고르고, 500자 이내 사유·판단 요지·담당자 판단 필요 사항을 씀
+ * - 코드 검사
+ *   · 500자 넘는 사유는 1번 다시 쓰게 하고, 그래도 넘으면 자르지 않고 "500자 초과" 경고
+ *   · 사유 속 숫자가 자료·조항·계산 결과에 없으면 "숫자 불일치" 경고
+ *   · 불참 판정 회사: 의견을 모두 "불참"으로 바꾸고, 정해진 틀의 불참 문장으로 사유를 만듦 (작업 7)
+ *   · 조건이 된 안건이 반대면 딸린 안건에 "조건부 안건" 경고
+ *   · 보수한도 표시(적정성 추가 검토 필요 등)는 경고로도 모음
+ */
+export async function writeOpinions(
+  notice: NoticeStep,
+  clauseStep: ClauseStep,
+  overviewStep: OverviewStep,
+  guideline: GuidelineClause[],
+  fetchImpl?: FetchLike,
+): Promise<OpinionStep> {
+  const { info } = notice;
+  const warnings: Warning[] = [];
+  const targets = notice.agendas.filter((a) => !a.isGroup);
+
+  // 1) 코드가 먼저 계산
+  const financials = info.financials
+    ? buildFinancialTable(Object.fromEntries(info.financials.rows.map((r) => [r.item, { current: r.current, previous: r.previous }])))
+    : [];
+  const dividend = info.dividend ? buildDividend(info.dividend.currentPerShare, info.dividend.previousPerShare) : undefined;
+  const payByAgenda: Record<string, PayLimit> = {};
+  for (const a of targets) {
+    const p = info.payLimits.find((x) => x.agendaNumber === a.number);
+    if (a.type === "이사 보수한도") payByAgenda[a.number] = compareDirectorPayLimit(p?.current ?? null, p?.previous ?? null, financials);
+    if (a.type === "감사 보수한도") payByAgenda[a.number] = compareAuditorPayLimit(p?.current ?? null, p?.previous ?? null);
+  }
+  if (targets.some((a) => a.type === "재무제표·이익배당 승인") && financials.every((r) => r.current === null)) {
+    warnings.push({ kind: "담당자 확인 필요", message: "재무표를 찾지 못해 재무 변동표를 만들지 못했습니다." });
+  }
+
+  // 안건마다 AI에게 줄 계산 결과 글
+  const computedFor = (a: Agenda): string => {
+    const parts: string[] = [];
+    if (a.type === "재무제표·이익배당 승인") {
+      if (financials.length) parts.push(`재무 변동(별도, 단위 백만 원): ${financialText(financials)}`);
+      if (dividend) parts.push(`주당배당금 ${fmt(dividend.previousPerShare)}원 → ${fmt(dividend.currentPerShare)}원 (증감 ${fmt(dividend.change)}원)`);
+    }
+    if (payByAgenda[a.number]) parts.push(payLimitText(payByAgenda[a.number]));
+    return parts.join(" / ");
+  };
+
+  // 2) AI 1번 호출 (근거 조항이 있는 안건만)
+  const withClauses = targets.filter((a) => clauseStep.byAgenda[a.number]?.clauses.length);
+  let answer: OpinionAnswer = { opinions: [] };
+  if (withClauses.length) {
+    answer = await askAiJson(
+      {
+        system: OPINION_SYSTEM,
+        user: opinionUserPrompt(
+          withClauses.map((a) => ({
+            number: a.number,
+            title: a.title,
+            type: a.type ?? "그 밖의 안건",
+            content: a.content,
+            facts: factsFor(a, info),
+            computed: computedFor(a),
+            clauses: clauseStep.byAgenda[a.number].clauses,
+          })),
+        ),
+        schema: opinionSchema,
+        schemaName: "agenda_opinions",
+      },
+      fetchImpl,
+    );
+  }
+  const byNumber = new Map(answer.opinions.map((o) => [normalizeAgendaNumber(o.agendaNumber) ?? o.agendaNumber, o]));
+
+  // 3) 500자를 넘은 사유는 1번 다시 쓰게 함 (불참 회사는 정해진 틀을 쓰므로 판단 요지만 쓰여 해당 없음)
+  const tooLong = [...byNumber.entries()].filter(([, o]) => o.reason.length > RULES.maxReasonLength);
+  if (tooLong.length && !overviewStep.isAbsenceCompany) {
+    const retry = await askAiJson(
+      {
+        system: OPINION_SYSTEM,
+        user: shortenUserPrompt(tooLong.map(([number, o]) => ({ number, reason: o.reason }))),
+        schema: opinionSchema,
+        schemaName: "agenda_opinions",
+      },
+      fetchImpl,
+    );
+    for (const o of retry.opinions) {
+      const key = normalizeAgendaNumber(o.agendaNumber) ?? o.agendaNumber;
+      const prev = byNumber.get(key);
+      if (prev && o.reason.length < prev.reason.length) prev.reason = o.reason; // 판단은 그대로, 사유만 바꿈
+    }
+  }
+
+  // 숫자 대조에 쓸 글: 자료 + 근거 조항 원문·번호 + 계산 결과
+  const allowedText = numberSource(
+    [
+      notice.sourceText,
+      ...guideline.map((c) => `${c.id} ${c.body}`),
+      ...targets.map(computedFor),
+      // 불참 문장에 코드가 넣는 명세표 숫자(이해관계인·당사 주식수와 지분율)
+      overviewStep.holding
+        ? [
+            overviewStep.holding.ourRatio.toFixed(1),
+            overviewStep.holding.relatedRatio.toFixed(1),
+            overviewStep.holding.ourShares.toLocaleString("en-US"),
+            overviewStep.holding.relatedShares.toLocaleString("en-US"),
+          ].join(" ")
+        : "",
+    ].join("\n"),
+  );
+
+  // 4) 안건마다 결과 정리
+  const reviews: AgendaReview[] = targets.map((agenda) => {
+    const cited = clauseStep.byAgenda[agenda.number]?.clauses ?? [];
+    const ai = cited.length ? byNumber.get(agenda.number) : undefined;
+    const isElection = agenda.type === "이사 선임" || agenda.type === "감사 선임" || agenda.type === "감사위원 선임";
+
+    let opinion: Opinion;
+    let judgment: AgendaReview["guidelineJudgment"];
+    let reason: string;
+    if (!ai) {
+      // 근거 조항이 없거나 AI가 답하지 않은 안건 → 담당자가 판단
+      opinion = "판단 보류";
+      judgment = "판단 보류";
+      reason = "가이드라인에서 이 안건에 맞는 조항을 찾지 못해 판단을 보류합니다. 담당자가 의견을 정해 주세요.";
+      if (cited.length) {
+        warnings.push({ kind: "판단 보류", agendaNumber: agenda.number, message: `${agenda.number} ${agenda.title}: AI가 의견을 쓰지 않았습니다. 담당자가 판단해 주세요.` });
+      }
+    } else {
+      opinion = ai.judgment;
+      judgment = ai.judgment;
+      reason = ai.reason.trim();
+    }
+
+    // 불참 판정 회사: 기준 판단은 남기고 의견은 불참, 사유는 정해진 틀 (PRD 5장)
+    if (overviewStep.isAbsenceCompany && overviewStep.holding) {
+      opinion = "불참";
+      reason = absenceOpinionReason(overviewStep.holding, judgment, ai?.summary ?? "");
+    }
+
+    if (reason.length > RULES.maxReasonLength) {
+      warnings.push({ kind: "500자 초과", agendaNumber: agenda.number, message: `${agenda.number}: 사유가 ${reason.length}자로 500자를 넘습니다. 줄여 주세요.` });
+    }
+    const unknown = ai ? unknownNumbers(reason, allowedText) : [];
+    if (unknown.length) {
+      warnings.push({
+        kind: "숫자 불일치",
+        agendaNumber: agenda.number,
+        message: `${agenda.number}: 사유의 숫자(${unknown.join(", ")})를 자료·조항·계산 결과에서 찾지 못했습니다. 확인해 주세요.`,
+      });
+    }
+
+    const pay = payByAgenda[agenda.number];
+    if (pay?.flag) warnings.push({ kind: pay.flag.startsWith("판단 불가") ? "판단 불가" : pay.flag === "담당자 별도 검토 필요" ? "담당자 별도 검토 필요" : "적정성 추가 검토 필요", agendaNumber: agenda.number, message: `${agenda.number} ${agenda.title}: ${pay.flag}` });
+
+    const managerChecks = isElection && ai ? ai.managerChecks.map((s) => s.trim()).filter(Boolean) : [];
+    for (const m of managerChecks) {
+      warnings.push({ kind: "담당자 확인 필요", agendaNumber: agenda.number, message: `${agenda.number} 담당자 판단 필요: ${m}` });
+    }
+
+    return {
+      agenda,
+      opinion,
+      guidelineJudgment: judgment,
+      reason,
+      clauses: cited,
+      managerChecks,
+      ...(pay ? { payLimit: pay } : {}),
+    };
+  });
+
+  // 5) 조건부 안건: 조건이 된 안건이 반대면 경고 (불참 회사는 모두 불참이라 해당 없음)
+  for (const r of reviews) {
+    const cond = r.agenda.conditionNumber;
+    if (!cond) continue;
+    const base = reviews.find((x) => x.agenda.number === cond);
+    if (base?.opinion === "반대") {
+      warnings.push({
+        kind: "조건부 안건",
+        agendaNumber: r.agenda.number,
+        message: `${r.agenda.number}은(는) ${cond}이(가) 가결돼야 상정됩니다. ${cond}에 반대하므로 두 의견이 서로 맞는지 확인해 주세요.`,
+      });
+    }
+  }
+
+  return { reviews, financials, ...(dividend ? { dividend } : {}), warnings };
 }
