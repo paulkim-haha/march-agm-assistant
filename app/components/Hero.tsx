@@ -21,7 +21,8 @@ export default function Hero() {
           <CalendarCheckIcon size={16} />
           AI 주총 어시스턴트
         </p>
-        <p className="max-w-xl text-[15px] leading-7 text-ink-2">
+        {/* 소개 문장: 짙은 청록 박스 + 흰 글자로 대비를 크게 줘서 또렷하게 */}
+        <p className="max-w-xl rounded-2xl bg-[#0f4c5c] px-6 py-4 text-[15px] font-medium leading-7 text-white shadow-card">
           주주총회 소집통지서를 올리면, 의결권 행사 가이드라인에 맞춰 안건별 검토 의견과 사유 초안을 만들어 드립니다.
         </p>
       </div>
