@@ -260,7 +260,13 @@ export function reapplyOpinions(
     absenceText = base.overview.absenceReason !== "-" ? base.overview.absenceReason : MANUAL_ABSENCE_REASON;
   }
 
-  const stillPending = new Set(reviews.filter((r) => r.opinion === "판단 보류").map((r) => r.agenda.number));
+  // 아직 보류인 안건: 의견이 "판단 보류"이거나, 불참 회사처럼 의견은 불참이지만 가이드라인 기준 판단을 못 내렸고
+  // 담당자가 그 안건 의견을 직접 바꾸지 않은 안건 (갭 분석 I-1)
+  const stillPending = new Set(
+    reviews
+      .filter((r) => r.opinion === "판단 보류" || (r.guidelineJudgment === "판단 보류" && opinions[r.agenda.number] === undefined))
+      .map((r) => r.agenda.number),
+  );
   const kept = base.warnings.filter((w) => {
     if (w.kind === "조건부 안건") return false; // 아래에서 새 의견으로 다시 만듦
     if (w.kind === "판단 보류" && w.agendaNumber && !stillPending.has(w.agendaNumber)) return false;

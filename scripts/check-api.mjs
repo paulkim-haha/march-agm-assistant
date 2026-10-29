@@ -39,8 +39,9 @@ try {
 console.log("[1] 잘못된 요청 (AI를 부르기 전에 막힘)");
 const none = await post([]);
 check("파일 없음 → 400 NO_FILE", [none.status, none.body.error?.code], [400, "NO_FILE"]);
-const key = await post([await sample("00_시나리오_안내_업로드금지.md")]);
-check("채점표 → 400 BLOCKED_FILE", [key.status, key.body.error?.code], [400, "BLOCKED_FILE"]);
+// 채점표 파일은 코드 어디에서도 읽지 않습니다. 이름만 같은 가짜 파일로 차단이 되는지 확인합니다. (갭 분석 I-3)
+const key = await post([{ name: "00_시나리오_안내_업로드금지.md", bytes: Buffer.from("가짜 내용") }]);
+check("채점표 이름의 파일 → 400 BLOCKED_FILE", [key.status, key.body.error?.code], [400, "BLOCKED_FILE"]);
 const docx = await post([{ name: "소집통지서.docx", bytes: Buffer.from("PK..") }]);
 check("워드 파일 → 415 UNSUPPORTED_TYPE", [docx.status, docx.body.error?.code], [415, "UNSUPPORTED_TYPE"]);
 const six = await post(Array.from({ length: 6 }, (_, i) => ({ name: `f${i}.txt`, bytes: Buffer.from(`내용${i}`) })));

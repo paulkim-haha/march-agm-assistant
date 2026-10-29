@@ -17,7 +17,7 @@ import {
 } from "./calc.ts";
 import type { ExtractedBundle, UploadedFile } from "./extract-text.ts";
 import { ReviewError, extractUploadTexts } from "./extract-text.ts";
-import { checkClauseIds, clausesForType, loadGuideline, normalizeClauseId, scopeText } from "./guideline.ts";
+import { checkClauseIds, clausesForType, loadGuideline, normalizeClauseId, requiredAmendmentClauses, scopeText } from "./guideline.ts";
 import { DataMissingError, findHolding, loadHoldings, normalizeCompanyName } from "./holdings.ts";
 import {
   CLAUSE_SYSTEM,
@@ -407,7 +407,9 @@ export async function matchClauses(
         else votes.set(key, { raw, count: 1, order: votes.size });
       }
     }
-    const merged = [...votes.values()].sort((a, b) => b.count - a.count || a.order - b.order).map((v) => v.raw);
+    const voted = [...votes.values()].sort((a, b) => b.count - a.count || a.order - b.order).map((v) => v.raw);
+    // 정관 변경은 바뀌는 조문에 직접 해당하는 조항을 먼저 넣어 3개 제한에 밀려 잘리지 않게 함 (갭 분석 I-2)
+    const merged = [...requiredAmendmentClauses(agenda), ...voted];
     // 범위 밖 번호도 "없는 번호"처럼 지움 (removed에 남겨 둠)
     const { valid, removed } = checkClauseIds(allowedFor(agenda), merged);
     byAgenda[agenda.number] = { agendaNumber: agenda.number, clauses: valid, removed, why: matches[0]?.why ?? "" };

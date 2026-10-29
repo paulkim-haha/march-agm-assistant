@@ -96,6 +96,24 @@ if (!process.argv.includes("--live")) {
   check("두 답 모두 고른 조항이 먼저, 최대 3개", two.byAgenda["제2-1호"].clauses.map((c) => c.id), ["3.3.1)", "3.3.2)", "3.1.2)"]);
   check("한쪽이 빠뜨린 안건은 다른 쪽 답으로", two.byAgenda["제1호"].clauses.map((c) => c.id), ["1.1.1)"]);
   check("재무제표 안건이 고른 2장 조항(2.11.2))은 범위 밖이라 지움", two.byAgenda["제1호"].removed, ["2.11.2)"]);
+  // 갭 분석 I-2: 정관 변경에서 바뀌는 조문의 조항은 AI가 빠뜨려도 코드가 넣음
+  const articles = {
+    ...notice,
+    agendas: [
+      ag("제2호", "정관 일부 변경의 건", "정관 변경", {
+        content: "제30조(이사의 수) 이사는 3명 이상 7명 이내 → 9명 이내. 제45조(배당기준일) 이사회 결의로 정한다.",
+      }),
+      ag("제3호", "정관 일부 변경의 건", "정관 변경", { content: "제2조(목적) 사업목적 추가" }),
+    ],
+  };
+  const art = await matchClauses(
+    articles,
+    guideline,
+    fakeSeq({ matches: [{ agendaNumber: "제2호", clauseIds: ["2.8.1)", "2.2.1)", "2.6.2)"], why: "가" }, { agendaNumber: "제3호", clauseIds: ["2.2.1)"], why: "가" }] }),
+  );
+  check("정관 변경: 빠뜨린 2.14.1)을 코드가 넣고 3개로 맞춤", art.byAgenda["제2호"].clauses.map((c) => c.id), ["2.14.1)", "2.8.1)", "2.2.1)"]);
+  check("바뀌는 조문이 해당 없으면 AI 답 그대로", art.byAgenda["제3호"].clauses.map((c) => c.id), ["2.2.1)"]);
+
   let calls = 0;
   const halfFail = async () => {
     calls++;

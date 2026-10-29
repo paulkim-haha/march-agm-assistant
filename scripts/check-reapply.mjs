@@ -75,6 +75,12 @@ check("불참 판정 회사는 처음 불참사유를 그대로", reapplyOpinion
 const r5 = reapplyOpinions(absenceBase, { 제1호: "찬성" });
 check("불참 회사라도 담당자가 찬성을 고르면 참석", [r5.overview.attendance, r5.overview.absenceReason], ["참석", "-"]);
 
+// 갭 분석 I-1: 불참 회사에서 조항을 못 찾은 안건(제4호: 기준 판단 "판단 보류", 의견은 불참)의 경고
+const absencePending = { ...absenceBase, warnings: [{ kind: "판단 보류", agendaNumber: "제4호", message: "제4호: 조항을 찾지 못했습니다." }] };
+check("불참 회사도 조항을 못 찾은 안건의 판단 보류 경고가 첫 화면에 남음", kinds(reapplyOpinions(absencePending, {})), ["판단 보류:제4호"]);
+check("담당자가 그 안건 의견을 직접 고르면 경고가 사라짐", kinds(reapplyOpinions(absencePending, { 제4호: "찬성" })), []);
+check("다른 안건 의견을 바꿔도 이 경고는 남음", kinds(reapplyOpinions(absencePending, { 제1호: "찬성" })).includes("판단 보류:제4호"), true);
+
 console.log("\n[5] 처음 보고서는 바뀌지 않음");
 check("처음 보고서의 제4호 의견", base.reviews[3].opinion, "판단 보류");
 check("처음 보고서의 경고 수", base.warnings.length, 3);

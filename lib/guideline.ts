@@ -100,6 +100,21 @@ function sectionOf(id: string): string {
   return id.replace(/ 표$/, "").split(".").slice(0, 2).join(".").replace(/\)$/, "");
 }
 
+/**
+ * 정관 변경 안건의 글에 이 말이 있으면 반드시 근거에 넣을 조항 (갭 분석 I-2)
+ * AI가 가끔 빠뜨리는 것을 코드로 보완합니다. 안건 글에 해당 조문이 있을 때만 넣고, 번호 검사는 쓰는 쪽(checkClauseIds)이 합니다.
+ */
+const AMENDMENT_RULES: { pattern: RegExp; clauseId: string }[] = [
+  { pattern: /이사의\s*수|이사\s*수|이사회\s*규모/, clauseId: "2.14.1)" },
+  { pattern: /배당\s*기준일/, clauseId: "2.8.1)" },
+];
+
+export function requiredAmendmentClauses(agenda: { type: AgendaType | null; title: string; content: string }): string[] {
+  if (agenda.type !== "정관 변경") return [];
+  const text = `${agenda.title} ${agenda.content}`;
+  return AMENDMENT_RULES.filter((r) => r.pattern.test(text)).map((r) => r.clauseId);
+}
+
 /** 안건 유형의 조항 범위를 AI에게 보여 줄 글로 (예: "4장, 2.25·2.26·2.27절"). 유형을 모르면 "전체" (PLAN 작업 21) */
 export function scopeText(type: AgendaType | null): string {
   if (!type) return "전체";

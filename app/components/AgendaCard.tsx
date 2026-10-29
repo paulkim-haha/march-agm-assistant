@@ -172,6 +172,12 @@ export default function AgendaCard({
         </p>
       )}
       {pending && <p className="mt-1 text-sm font-medium text-red-700 dark:text-red-400">담당자가 의견을 정해 주세요.</p>}
+      {/* 불참 회사처럼 의견은 정해졌지만 가이드라인 기준 판단을 못 낸 안건 */}
+      {!pending && guidelineJudgment === "판단 보류" && (
+        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+          맞는 가이드라인 조항을 찾지 못해 기준 판단은 보류입니다. 담당자가 확인해 주세요.
+        </p>
+      )}
       {agenda.conditionNumber && (
         <p className="mt-1 text-xs text-zinc-500">※ {agenda.conditionNumber}이(가) 가결되는 경우에만 상정되는 안건</p>
       )}
