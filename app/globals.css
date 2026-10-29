@@ -7,62 +7,64 @@
  * 색을 바꾸고 싶으면 아래 숫자(#...)만 고치면 화면 전체에 반영됩니다.
  */
 :root {
-  --bg: #f3f5fb;
+  /* 밝은 톤: 맑은 하늘빛이 도는 바탕에 한 톤 가벼운 인디고를 포인트로, 모든 색을 같은 파란 계열 안에서 맞춤 */
+  --bg: #f6f8ff;
   --surface: #ffffff;
-  --surface-2: #f7f8fd;
-  --ink: #172033;
-  --ink-2: #4a5568;
-  --ink-3: #7a8499;
-  --line: #e1e6f0;
+  --surface-2: #fafbff;
+  --ink: #1f2a44;
+  --ink-2: #55607a;
+  --ink-3: #6b7690;
+  --line: #e4e9f7;
 
-  --brand: #3347c9;
-  --brand-strong: #26379f;
-  --brand-soft: #eaeefe;
+  --brand: #4860e6;
+  --brand-strong: #3a4fd1;
+  --brand-soft: #eef1ff;
   --brand-ink: #ffffff;
 
-  --ok: #0f9d6a;
-  --ok-soft: #e4f6ee;
-  --ok-ink: #0a6a49;
-  --bad: #d33a52;
-  --bad-soft: #fdecef;
-  --bad-ink: #a3213a;
-  --hold: #b7791f;
-  --hold-soft: #fff3da;
-  --hold-ink: #86560a;
-  --absent: #5b6578;
-  --absent-soft: #e9edf4;
-  --absent-ink: #3f485a;
+  --ok: #17b27a;
+  --ok-soft: #e6f9f1;
+  --ok-ink: #0c7a55;
+  --bad: #ec5b73;
+  --bad-soft: #fff0f3;
+  --bad-ink: #bf2f4a;
+  --hold: #e0a030;
+  --hold-soft: #fff6e0;
+  --hold-ink: #94620a;
+  --absent: #7a8699;
+  --absent-soft: #eef1f7;
+  --absent-ink: #4a5568;
 
-  --shadow: 0 1px 2px rgb(23 32 51 / 0.05), 0 4px 16px rgb(23 32 51 / 0.05);
+  --shadow: 0 1px 2px rgb(72 96 230 / 0.06), 0 6px 20px rgb(72 96 230 / 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b0f1a;
-    --surface: #131a2b;
-    --surface-2: #182033;
-    --ink: #e8ecf6;
-    --ink-2: #aab3c6;
-    --ink-3: #7c869c;
-    --line: #262f46;
+    /* 어두운 모드도 한 단계 밝게: 너무 검지 않은 남색 바탕 */
+    --bg: #11172a;
+    --surface: #1a2238;
+    --surface-2: #212a45;
+    --ink: #eef1fa;
+    --ink-2: #b4bdd2;
+    --ink-3: #8590aa;
+    --line: #2f3a58;
 
-    --brand: #8294ff;
-    --brand-strong: #a3b0ff;
-    --brand-soft: #1b2447;
-    --brand-ink: #0b0f1a;
+    --brand: #93a4ff;
+    --brand-strong: #b3beff;
+    --brand-soft: #242e57;
+    --brand-ink: #11172a;
 
-    --ok: #3dd29a;
-    --ok-soft: #10281f;
+    --ok: #4bdba5;
+    --ok-soft: #14332a;
     --ok-ink: #7be8bd;
-    --bad: #ff7388;
-    --bad-soft: #301620;
+    --bad: #ff7f93;
+    --bad-soft: #3a1c2a;
     --bad-ink: #ff9eae;
-    --hold: #f0b64f;
-    --hold-soft: #2e2410;
+    --hold: #f3bf5a;
+    --hold-soft: #3a2e14;
     --hold-ink: #f6cd82;
-    --absent: #98a2b8;
-    --absent-soft: #1f2638;
-    --absent-ink: #c1c9d9;
+    --absent: #a2acc2;
+    --absent-soft: #262f48;
+    --absent-ink: #c9d1e2;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
   }
@@ -102,7 +104,8 @@ html {
 }
 
 body {
-  background: var(--bg);
+  /* 위쪽에 아주 옅은 포인트색을 깔아 화면이 산뜻하고 밝게 보이도록 */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 75%, var(--bg)) 0, var(--bg) 360px) no-repeat, var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   line-height: 1.6;
