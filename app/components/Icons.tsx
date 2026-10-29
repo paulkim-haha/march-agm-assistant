@@ -115,13 +115,6 @@ export const BookIcon = (p: IconProps) => (
   </Base>
 );
 
-/** 오른쪽 화살표 */
-export const ArrowRightIcon = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M5 12h14M13 6l6 6-6 6" />
-  </Base>
-);
-
 /** 둥글게 도는 표시 (검토 중) */
 export const SpinnerIcon = ({ size = 18, ...rest }: IconProps) => (
   <svg
