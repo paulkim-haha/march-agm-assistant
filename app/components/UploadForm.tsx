@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RULES, type Report, type ReviewResponse } from "@/lib/types.ts";
+import { AlertIcon, CheckIcon, CloseIcon, FileIcon, SparklesIcon, SpinnerIcon, UploadIcon } from "./Icons";
 
 /** 올릴 수 있는 파일 종류 */
 const ACCEPT = ".pdf,.md,.txt";
@@ -109,17 +110,21 @@ export default function UploadForm({ onReport }: Props) {
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">소집통지서 올리기</h2>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+    <section className="rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+        <UploadIcon className="text-brand" size={20} />
+        소집통지서 올리기
+      </h2>
+      <p className="mt-1.5 text-sm leading-6 text-ink-2">
         회사 1곳의 소집통지서를 올려 주세요. 소집통지서와 안건 설명서가 따로 있으면 함께 고르면 됩니다.
-        (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)
+        <span className="text-ink-3"> (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)</span>
       </p>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label
-          className={`inline-flex cursor-pointer items-center justify-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${busy ? "pointer-events-none opacity-50" : ""}`}
+          className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand ${busy ? "pointer-events-none opacity-50" : ""}`}
         >
+          <FileIcon size={18} />
           파일 선택
           <input
             ref={inputRef}
@@ -135,28 +140,32 @@ export default function UploadForm({ onReport }: Props) {
           type="button"
           onClick={startReview}
           disabled={files.length === 0 || busy}
-          className="rounded-md bg-zinc-900 px-5 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-brand-ink shadow-card transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-3 disabled:shadow-none"
         >
+          {busy ? <SpinnerIcon size={18} /> : <SparklesIcon size={18} />}
           {busy ? "검토 중…" : "검토 시작"}
         </button>
       </div>
 
       {/* 고른 파일 목록 */}
       {files.length > 0 && (
-        <ul className="mt-4 divide-y divide-zinc-100 rounded-md border border-zinc-200 text-sm dark:divide-zinc-800 dark:border-zinc-800">
+        <ul className="mt-4 divide-y divide-line overflow-hidden rounded-xl border border-line text-sm">
           {files.map((f, i) => (
-            <li key={`${f.name}-${f.size}`} className="flex items-center justify-between gap-3 px-3 py-2">
-              <span className="truncate text-zinc-800 dark:text-zinc-200">{f.name}</span>
-              <span className="flex shrink-0 items-center gap-3 text-zinc-500">
+            <li key={`${f.name}-${f.size}`} className="flex items-center justify-between gap-3 bg-surface-2 px-3.5 py-2.5">
+              <span className="flex min-w-0 items-center gap-2 text-ink">
+                <FileIcon size={16} className="text-brand" />
+                <span className="truncate">{f.name}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-xs text-ink-3">
                 {sizeText(f.size)}
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
                   disabled={busy}
                   aria-label={`${f.name} 빼기`}
-                  className="rounded px-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  className="rounded-md p-1 text-ink-3 transition hover:bg-bad-soft hover:text-bad-ink disabled:opacity-40"
                 >
-                  ✕
+                  <CloseIcon size={16} />
                 </button>
               </span>
             </li>
@@ -166,21 +175,24 @@ export default function UploadForm({ onReport }: Props) {
 
       {/* 검토 중 표시 */}
       {busy && (
-        <p className="mt-4 text-sm text-zinc-700 dark:text-zinc-300" role="status">
-          검토 중… {seconds}초 (보통 30초~1분 걸려요. 창을 닫지 마세요.)
+        <p className="mt-4 flex items-center gap-2 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm font-medium text-brand-strong" role="status">
+          <SpinnerIcon size={16} />
+          검토 중… {seconds}초 <span className="font-normal text-ink-2">(보통 30초~1분 걸려요. 창을 닫지 마세요.)</span>
         </p>
       )}
 
       {/* 오류 안내 */}
       {error && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300" role="alert">
+        <p className="mt-4 flex items-start gap-2 rounded-xl bg-bad-soft px-3.5 py-2.5 text-sm font-medium text-bad-ink" role="alert">
+          <AlertIcon size={18} className="mt-0.5" />
           {error}
         </p>
       )}
 
-      {/* 완료 안내 (자세한 보고서 화면은 PLAN 작업 18에서 이 아래에 붙음) */}
+      {/* 완료 안내 (자세한 보고서는 이 아래에 나옴) */}
       {done && !busy && (
-        <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" role="status">
+        <p className="mt-4 flex items-center gap-2 rounded-xl bg-ok-soft px-3.5 py-2.5 text-sm font-medium text-ok-ink" role="status">
+          <CheckIcon size={18} />
           검토 완료: {done.companyName} · 안건 {done.reviews.length}개 · 참석여부 {done.overview.attendance}
         </p>
       )}

@@ -10,6 +10,7 @@ import { reapplyOpinions } from "@/lib/calc.ts";
 import { reportToHtml, reportToText } from "@/lib/report-copy.ts";
 import type { Opinion, Report, Warning } from "@/lib/types.ts";
 import AgendaCard, { OpinionBadge } from "./AgendaCard";
+import { AlertIcon, BookIcon, CheckIcon, CopyIcon, TableIcon, UndoIcon } from "./Icons";
 
 /** 의안 번호로 카드 이름표를 만듭니다. (화면 안에서 이동할 때 씀) */
 const anchorOf = (index: number) => `agenda-card-${index}`;
@@ -47,11 +48,10 @@ async function copyReport(report: Report): Promise<boolean> {
   }
 }
 
-/** 경고 종류마다 다른 색 */
+/** 경고 종류마다 다른 색 (빨강: 꼭 고쳐야 하는 것, 호박색: 확인하면 되는 것) */
 function warningColor(w: Warning): string {
-  if (w.kind === "판단 보류") return "text-red-700 dark:text-red-400";
-  if (w.kind === "숫자 불일치" || w.kind === "500자 초과" || w.kind === "소유주식수 불일치") return "text-red-700 dark:text-red-400";
-  return "text-amber-800 dark:text-amber-300";
+  if (w.kind === "판단 보류" || w.kind === "숫자 불일치" || w.kind === "500자 초과" || w.kind === "소유주식수 불일치") return "text-bad-ink";
+  return "text-hold-ink";
 }
 
 export default function ReportView({ report: base }: { report: Report }) {
@@ -83,8 +83,8 @@ export default function ReportView({ report: base }: { report: Report }) {
 
   return (
     <section className="flex flex-col gap-6" aria-label="검토 보고서">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{report.companyName} 검토 보고서</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-ink sm:text-2xl">{report.companyName} 검토 보고서</h2>
         {changedCount > 0 && (
           <button
             type="button"
@@ -92,16 +92,18 @@ export default function ReportView({ report: base }: { report: Report }) {
               setOpinions({});
               setReasons({});
             }}
-            className="rounded-md border border-zinc-300 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-ink-2 transition hover:border-brand hover:text-brand"
           >
+            <UndoIcon size={16} />
             고친 안건 {changedCount}개 처음대로 되돌리기
           </button>
         )}
       </div>
 
       {/* ■ 주주총회 개요표 */}
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-        <h3 className="border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        <h3 className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-3 text-sm font-bold text-ink">
+          <TableIcon size={17} className="text-brand" />
           주주총회 개요
         </h3>
         <table className="w-full text-sm">
@@ -109,9 +111,9 @@ export default function ReportView({ report: base }: { report: Report }) {
             <Row label="일시">{overview.dateTime || <Missing />}</Row>
             <Row label="장소">{overview.place || <Missing />}</Row>
             <Row label="부의안건">
-              <ul className="flex flex-col gap-0.5">
+              <ul className="flex flex-col gap-1">
                 {lines.map((l) => (
-                  <li key={l.number} className={l.isSub ? "pl-4" : ""}>
+                  <li key={l.number} className={l.isSub ? "pl-4 text-ink-2" : "font-medium"}>
                     {l.isSub ? "└ " : ""}
                     {l.number} {l.title}
                   </li>
@@ -126,9 +128,9 @@ export default function ReportView({ report: base }: { report: Report }) {
               )}
             </Row>
             <Row label="참석여부">
-              <span className="font-semibold">{overview.attendance}</span>
+              <AttendanceBadge value={overview.attendance} />
               {overview.attendance === "판정 대기" && (
-                <span className="ml-2 text-xs text-zinc-500">(판단 보류 안건의 의견을 정하면 판정됩니다)</span>
+                <span className="ml-2 text-xs text-ink-3">(판단 보류 안건의 의견을 정하면 판정됩니다)</span>
               )}
             </Row>
             <Row label="불참사유">{overview.absenceReason}</Row>
@@ -136,16 +138,19 @@ export default function ReportView({ report: base }: { report: Report }) {
         </table>
       </div>
 
-      {/* ■ ⚠ 확인 필요 목록 (누르면 해당 안건 카드로 이동) */}
+      {/* ■ 확인 필요 목록 (누르면 해당 안건 카드로 이동) */}
       {warnings.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-          <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">⚠ 확인 필요 {warnings.length}건</h3>
-          <ul className="mt-2 flex flex-col gap-1 text-sm">
+        <div className="rounded-2xl border border-hold/40 bg-hold-soft p-4 sm:p-5">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-hold-ink">
+            <AlertIcon size={18} />
+            확인 필요 {warnings.length}건
+          </h3>
+          <ul className="mt-3 flex flex-col gap-1.5 text-sm leading-6">
             {warnings.map((w, i) => {
               const target = w.agendaNumber !== undefined ? indexOf.get(w.agendaNumber) : undefined;
               const text = (
                 <>
-                  <span className="font-semibold">[{w.kind}]</span> {w.message}
+                  <span className="font-bold">[{w.kind}]</span> {w.message}
                 </>
               );
               return (
@@ -171,7 +176,8 @@ export default function ReportView({ report: base }: { report: Report }) {
           if (!review) {
             // 상위 안건: 의견 없이 제목줄만
             return (
-              <h3 key={l.number} id={anchorOf(i)} className="mt-2 font-semibold text-zinc-700 dark:text-zinc-300">
+              <h3 key={l.number} id={anchorOf(i)} className="mt-3 flex scroll-mt-4 items-center gap-2 text-base font-bold text-ink">
+                <BookIcon size={18} className="text-brand" />
                 {l.number} {l.title}
               </h3>
             );
@@ -194,26 +200,27 @@ export default function ReportView({ report: base }: { report: Report }) {
       </div>
 
       {/* 의견 한눈에 보기 */}
-      <div className="flex flex-wrap gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink-2">
         {reviews.map((r) => (
-          <span key={r.agenda.number} className="flex items-center gap-1">
+          <span key={r.agenda.number} className="flex items-center gap-1.5">
             {r.agenda.number} <OpinionBadge opinion={r.opinion} />
           </span>
         ))}
       </div>
 
       {/* ■ 보고서 전체 복사: 화면에서 고친 내용 그대로 (확인 필요 목록은 넣지 않음) */}
-      <div className="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-brand-ink shadow-card transition hover:bg-brand-strong"
         >
+          {copyState === "done" ? <CheckIcon size={18} /> : <CopyIcon size={18} />}
           보고서 전체 복사
         </button>
-        <span role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
-          {copyState === "done" && "복사했어요. 한글·엑셀에는 표로, 메모장에는 글자로 붙여 넣어져요."}
-          {copyState === "fail" && <span className="text-red-700 dark:text-red-400">복사하지 못했어요. 다시 눌러 주세요.</span>}
+        <span role="status" className="text-sm text-ink-3">
+          {copyState === "done" && <span className="font-medium text-ok-ink">복사했어요. 한글·엑셀에는 표로, 메모장에는 글자로 붙여 넣어져요.</span>}
+          {copyState === "fail" && <span className="font-medium text-bad-ink">복사하지 못했어요. 다시 눌러 주세요.</span>}
           {copyState === "idle" && "한글·엑셀에 붙이면 표 모양, 메모장에 붙이면 글자로 들어가요. (확인 필요 목록은 빠짐)"}
         </span>
       </div>
@@ -221,17 +228,22 @@ export default function ReportView({ report: base }: { report: Report }) {
   );
 }
 
+/** 참석여부를 색 있는 알약 모양으로 */
+function AttendanceBadge({ value }: { value: string }) {
+  const style =
+    value === "참석" ? "bg-ok-soft text-ok-ink" : value === "불참" ? "bg-absent-soft text-absent-ink" : "bg-hold-soft text-hold-ink";
+  return <span className={`inline-block rounded-full px-3 py-0.5 text-sm font-bold ${style}`}>{value}</span>;
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <tr className="border-b border-zinc-100 last:border-0 dark:border-zinc-900">
-      <th className="w-24 bg-zinc-50 px-4 py-2 text-left align-top font-medium text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 sm:w-32">
-        {label}
-      </th>
-      <td className="px-4 py-2 text-zinc-800 dark:text-zinc-200">{children}</td>
+    <tr className="border-b border-line last:border-0">
+      <th className="w-24 bg-surface-2 px-4 py-3 text-left align-top text-xs font-semibold text-ink-3 sm:w-32">{label}</th>
+      <td className="px-4 py-3 leading-6 text-ink">{children}</td>
     </tr>
   );
 }
 
 function Missing() {
-  return <span className="text-amber-700 dark:text-amber-400">담당자 확인 필요</span>;
+  return <span className="font-medium text-hold-ink">담당자 확인 필요</span>;
 }
