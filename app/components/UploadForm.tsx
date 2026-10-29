@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RULES, type Report, type ReviewResponse } from "@/lib/types.ts";
 import { AlertIcon, CheckIcon, CloseIcon, FileIcon, SparklesIcon, SpinnerIcon, UploadIcon } from "./Icons";
+import Mascot, { type MascotMood } from "./Mascot";
 
 /** 올릴 수 있는 파일 종류 */
 const ACCEPT = ".pdf,.md,.txt";
@@ -44,6 +45,16 @@ export default function UploadForm({ onReport }: Props) {
   }, [busy]);
 
   const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+
+  // 캐릭터 표정과 말풍선: 검토 중 → 오류 → 완료 → 기본 순서로 정함
+  const mascotMood: MascotMood = busy ? "working" : error ? "error" : done ? "done" : "idle";
+  const mascotSays = busy
+    ? "꼼꼼히 살펴보는 중이에요!"
+    : error
+      ? "앗, 문제가 생겼어요. 안내를 확인해 주세요"
+      : done
+        ? "검토 끝! 아래 보고서를 확인해 주세요"
+        : "안건 검토는 제게 맡겨 주세요!";
 
   /** 파일을 고르면 목록에 더합니다. (같은 파일은 한 번만, 규칙에 안 맞으면 안내) */
   function addFiles(picked: FileList | null) {
@@ -111,14 +122,25 @@ export default function UploadForm({ onReport }: Props) {
 
   return (
     <section className="rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
-        <UploadIcon className="text-brand" size={20} />
-        소집통지서 올리기
-      </h2>
-      <p className="mt-1.5 text-sm leading-6 text-ink-2">
-        회사 1곳의 소집통지서를 올려 주세요. 소집통지서와 안건 설명서가 따로 있으면 함께 고르면 됩니다.
-        <span className="text-ink-3"> (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)</span>
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+            <UploadIcon className="text-brand" size={20} />
+            소집통지서 올리기
+          </h2>
+          <p className="mt-1.5 text-sm leading-6 text-ink-2">
+            회사 1곳의 소집통지서를 올려 주세요. 소집통지서와 안건 설명서가 따로 있으면 함께 고르면 됩니다.
+            <span className="text-ink-3"> (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)</span>
+          </p>
+        </div>
+        {/* 캐릭터 "주총이": 상황에 따라 표정과 말풍선이 바뀜 */}
+        <div className="flex shrink-0 flex-col items-center gap-1 sm:flex-row-reverse sm:items-center sm:gap-2">
+          <Mascot mood={mascotMood} size={96} className="sm:size-[112px]" />
+          <p className="max-w-[9.5rem] rounded-2xl rounded-br-sm bg-brand-soft px-3 py-2 text-center text-xs font-semibold leading-5 text-brand-strong sm:rounded-br-2xl sm:rounded-r-sm">
+            {mascotSays}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label

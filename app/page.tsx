@@ -1,11 +1,14 @@
 // 첫 화면입니다. (DESIGN.md 6장: 머리말 → 업로드 구역 → 보고서 구역)
 // 머리말은 여기서, 업로드 구역과 보고서 구역은 ReviewScreen이 보여 줍니다.
+import BackgroundArt from "./components/BackgroundArt";
 import { CalendarCheckIcon } from "./components/Icons";
 import ReviewScreen from "./components/ReviewScreen";
 
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
+      {/* 봄(벚꽃) 배경 그림: 화면 뒤에 은은하게 깔림 */}
+      <BackgroundArt />
       {/* ① 머리말: 앱 이름과 사용 안내 */}
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
