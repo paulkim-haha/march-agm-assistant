@@ -20,7 +20,13 @@ export async function loadGuideline(): Promise<GuidelineClause[]> {
       "가이드라인 조항 데이터(data/guideline.json)를 찾지 못했습니다. npm run build:guideline을 먼저 실행해 주세요.",
     );
   }
-  const clauses = JSON.parse(text) as GuidelineClause[];
+  let clauses: GuidelineClause[];
+  try {
+    clauses = JSON.parse(text) as GuidelineClause[];
+  } catch {
+    // 파일이 망가진 경우도 "탑재 자료 없음"으로 안내 (갭 분석 M-6)
+    throw new DataMissingError("가이드라인 조항 데이터(data/guideline.json)를 읽지 못했습니다. npm run build:guideline을 다시 실행해 주세요.");
+  }
   if (!Array.isArray(clauses) || clauses.length === 0) {
     throw new DataMissingError("가이드라인 조항 데이터가 비어 있습니다.");
   }

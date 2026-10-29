@@ -94,6 +94,10 @@ check("담당자 판단 필요 사항 칸", agendaRows[3][5], "· 독립성 확�
 check("보수한도 비교가 안건 칸에 들어감", agendaRows[4][1].includes("이사 보수한도 30억 원 → 40억 원 (+33.3%)"), true);
 check("고친 사유가 복사됨", agendaRows[4][3], "보수한도가 33.3% 올랐으나 …");
 
+// 갭 분석 M-3: 전기 흑자 → 당기 적자는 비율과 "적자 전환" 표시를 함께
+const lossReport = { ...short, financials: [{ item: "영업이익", previous: 1000, current: -500, change: -1500, changeRate: -150, lossLabel: "적자 전환" }] };
+check("전기 흑자 → 당기 적자: 증감률과 적자 전환을 함께", reportToTables(lossReport)[1].rows[1], ["영업이익", "1,000", "-500", "-1,500", "-150.0% (적자 전환)"]);
+
 console.log("\n[3] 한글·엑셀용 표 (HTML)");
 const html = reportToHtml(short);
 check("표가 3개", (html.match(/<table/g) ?? []).length, 3);

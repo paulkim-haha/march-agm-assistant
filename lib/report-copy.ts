@@ -11,6 +11,15 @@ import type { PayLimit, Report } from "./types.ts";
 export const formatNumber = (n: number | null | undefined) => (n === null || n === undefined ? "-" : n.toLocaleString("ko-KR"));
 /** 증감률을 부호와 함께 (+7.4%) */
 export const formatRate = (n: number | null | undefined) => (n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
+/**
+ * 재무 변동표 한 줄의 증감률 칸. 비율이 있으면 비율 (+7.4%), 전기 적자라 비율이 없으면 "적자 축소" 같은 표시.
+ * 전기 흑자 → 당기 적자는 비율(-150.0%)과 "적자 전환" 표시를 함께 보여 줍니다. (갭 분석 M-3)
+ */
+export function formatRateCell(row: { changeRate: number | null; lossLabel?: string }): string {
+  if (row.changeRate === null) return row.lossLabel ?? "-";
+  const rate = formatRate(row.changeRate);
+  return row.lossLabel ? `${rate} (${row.lossLabel})` : rate;
+}
 /** 증감액을 부호와 함께 (+88,300) */
 export const formatSigned = (n: number | null | undefined) =>
   n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${n.toLocaleString("ko-KR")}`;
@@ -68,7 +77,7 @@ export function reportToTables(report: Report): CopyTable[] {
         formatNumber(r.previous),
         formatNumber(r.current),
         formatSigned(r.change),
-        r.changeRate !== null ? formatRate(r.changeRate) : (r.lossLabel ?? "-"),
+        formatRateCell(r),
       ]);
     }
     if (dividend) {

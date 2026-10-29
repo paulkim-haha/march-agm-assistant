@@ -96,6 +96,22 @@ function containsNumber(source: string, form: string): boolean {
   }
 }
 
+/** 의안 번호를 [주 번호, 하위 번호]로 ("제2-1호" → [2, 1], "제2호" → [2, 0]). 읽을 수 없으면 null */
+function agendaOrder(number: string): [number, number] | null {
+  const m = number.match(/^제(\d+)(?:-(\d+))?호$/);
+  return m ? [Number(m[1]), Number(m[2] ?? 0)] : null;
+}
+
+/** 의안 번호 순으로 정렬하는 비교 함수. 읽을 수 없는 번호는 맨 뒤로 보냅니다. (같으면 원래 순서 유지) */
+export function compareAgendaNumber(a: { number: string }, b: { number: string }): number {
+  const x = agendaOrder(a.number);
+  const y = agendaOrder(b.number);
+  if (!x && !y) return 0;
+  if (!x) return 1;
+  if (!y) return -1;
+  return x[0] - y[0] || x[1] - y[1];
+}
+
 /**
  * 의안 번호를 "제1호", "제2-1호" 모양으로 맞춥니다. 찾지 못하면 null.
  * AI가 "제2-1호 의안이 가결되는 경우에 한하여 상정"처럼 문장째 적어도 번호만 골라냅니다.
@@ -230,6 +246,8 @@ export async function extractNotice(bundle: ExtractedBundle, fetchImpl?: FetchLi
       ...(condition ? { conditionNumber: condition } : {}),
     };
   });
+  // AI가 준 순서가 아니라 의안 번호 순서로 (제1호 → 제2호 → 제2-1호 → 제2-2호 → 제3호) (갭 분석 M-1)
+  agendas.sort(compareAgendaNumber);
   // 보수한도·후보자가 가리키는 의안 번호도 같은 모양으로
   for (const p of info.payLimits) p.agendaNumber = normalizeAgendaNumber(p.agendaNumber) ?? p.agendaNumber;
   for (const c of info.candidates) c.agendaNumber = normalizeAgendaNumber(c.agendaNumber) ?? c.agendaNumber;

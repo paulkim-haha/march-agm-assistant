@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { extractUploadTexts } from "../lib/extract-text.ts";
 import { loadGuideline } from "../lib/guideline.ts";
-import { extractNotice, matchClauses } from "../lib/review.ts";
+import { compareAgendaNumber, extractNotice, matchClauses } from "../lib/review.ts";
 
 let failed = 0;
 function check(label, actual, expected) {
@@ -113,6 +113,10 @@ if (!process.argv.includes("--live")) {
   );
   check("정관 변경: 빠뜨린 2.14.1)을 코드가 넣고 3개로 맞춤", art.byAgenda["제2호"].clauses.map((c) => c.id), ["2.14.1)", "2.8.1)", "2.2.1)"]);
   check("바뀌는 조문이 해당 없으면 AI 답 그대로", art.byAgenda["제3호"].clauses.map((c) => c.id), ["2.2.1)"]);
+
+  // 갭 분석 M-1: 의안 번호 순서로 정렬
+  const order = ["제3호", "제2-2호", "제10호", "제2호", "기타", "제2-1호", "제1호"].map((number) => ({ number }));
+  check("의안 번호 순 정렬 (상위 안건이 하위 안건 앞, 제10호는 제3호 뒤, 읽을 수 없는 번호는 맨 뒤)", order.sort(compareAgendaNumber).map((a) => a.number), ["제1호", "제2호", "제2-1호", "제2-2호", "제3호", "제10호", "기타"]);
 
   let calls = 0;
   const halfFail = async () => {

@@ -2,7 +2,7 @@
 // 의견 → (재무 변동표·보수한도 비교) → 사유 → 근거 박스(조항 번호 + 원문) → 담당자 판단 필요 사항 순서로 보여 줍니다.
 // 담당자는 의견 고르기 칸에서 찬성/반대/불참을 직접 고르고(작업 19), 사유 글상자에서 사유를 직접 고칩니다(작업 20).
 
-import { formatNumber as num, formatRate as pct, formatSigned as signed } from "@/lib/report-copy.ts";
+import { formatNumber as num, formatRate as pct, formatRateCell, formatSigned as signed } from "@/lib/report-copy.ts";
 import { RULES, type AgendaReview, type Dividend, type FinancialRow, type Opinion, type PayLimit } from "@/lib/types.ts";
 
 /** 의견마다 다른 색 (찬성 초록, 반대 빨강, 불참 회색, 판단 보류 주황) */
@@ -42,7 +42,7 @@ function FinancialTable({ rows, dividend }: { rows: FinancialRow[]; dividend?: D
               <td className="py-1 text-right tabular-nums">{num(r.previous)}</td>
               <td className="py-1 text-right tabular-nums">{num(r.current)}</td>
               <td className="py-1 text-right tabular-nums">{signed(r.change)}</td>
-              <td className="py-1 text-right tabular-nums">{r.changeRate !== null ? pct(r.changeRate) : (r.lossLabel ?? "-")}</td>
+              <td className="py-1 text-right tabular-nums">{formatRateCell(r)}</td>
             </tr>
           ))}
           {dividend && (
