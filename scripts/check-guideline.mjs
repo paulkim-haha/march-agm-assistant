@@ -4,6 +4,7 @@
 
 import {
   checkClauseIds,
+  clauseIdsInText,
   clausesForType,
   findClause,
   loadGuideline,
@@ -69,6 +70,10 @@ check("감사 보수한도 → 2.27.2) 불포함", ids("감사 보수한도").in
 check("주식매수선택권 → 5.1.2) 포함", ids("주식매수선택권").includes("5.1.2)"), true);
 check("정관 변경 → 2.8.1)·2.14.1) 포함", ["2.8.1)", "2.14.1)"].every((id) => ids("정관 변경").includes(id)), true);
 check("유형을 모르면 전체", clausesForType(clauses, null).length, clauses.length);
+
+// 갭 분석 M-2: 글 속 조항 번호 찾기
+check("글 속 조항 번호를 모두 찾음", clauseIdsInText("3.3.1)에 따라 반대하며 3.3표와 3.1.2)도 해당"), ["3.3.1)", "3.3 표", "3.1.2)"]);
+check("날짜·비율은 조항으로 착각하지 않음", clauseIdsInText("제38기(2026.1.1~2026.12.31) 배당 2.0% 증가, 2027.3.29) 총회, 33.3%"), []);
 
 console.log(failed === 0 ? "\n모두 통과했습니다." : `\n${failed}개가 틀렸습니다.`);
 process.exitCode = failed === 0 ? 0 : 1;

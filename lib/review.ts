@@ -17,7 +17,7 @@ import {
 } from "./calc.ts";
 import type { ExtractedBundle, UploadedFile } from "./extract-text.ts";
 import { ReviewError, extractUploadTexts } from "./extract-text.ts";
-import { checkClauseIds, clausesForType, loadGuideline, normalizeClauseId, requiredAmendmentClauses, scopeText } from "./guideline.ts";
+import { checkClauseIds, clauseIdsInText, clausesForType, loadGuideline, normalizeClauseId, requiredAmendmentClauses, scopeText } from "./guideline.ts";
 import { DataMissingError, findHolding, loadHoldings, normalizeCompanyName } from "./holdings.ts";
 import {
   CLAUSE_SYSTEM,
@@ -650,6 +650,16 @@ export async function writeOpinions(
 
     const lengthWarning = reasonLengthWarning(agenda.number, reason);
     if (lengthWarning) warnings.push(lengthWarning);
+    // 사유에 적힌 조항 번호가 이 안건의 근거 조항(화면의 근거 박스)에 없으면 경고 (갭 분석 M-2)
+    const citedIds = new Set(cited.map((c) => c.id));
+    const strayIds = ai ? clauseIdsInText(reason).filter((id) => !citedIds.has(id)) : [];
+    if (strayIds.length) {
+      warnings.push({
+        kind: "담당자 확인 필요",
+        agendaNumber: agenda.number,
+        message: `${agenda.number}: 사유에 적힌 조항(${strayIds.join(", ")})이 근거 조항 목록에 없습니다. 확인해 주세요.`,
+      });
+    }
     const unknown = ai ? unknownNumbers(reason, allowedText) : [];
     if (unknown.length) {
       warnings.push({

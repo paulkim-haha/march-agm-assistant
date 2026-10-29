@@ -181,8 +181,7 @@ export default function UploadForm({ onReport }: Props) {
       {/* 완료 안내 (자세한 보고서 화면은 PLAN 작업 18에서 이 아래에 붙음) */}
       {done && !busy && (
         <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" role="status">
-          검토 완료: {done.companyName} · 안건 {done.reviews.length}개 · 참석여부 {done.overview.attendance} · 확인 필요{" "}
-          {done.warnings.length}건
+          검토 완료: {done.companyName} · 안건 {done.reviews.length}개 · 참석여부 {done.overview.attendance}
         </p>
       )}
     </section>

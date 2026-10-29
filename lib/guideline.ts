@@ -121,6 +121,15 @@ export function requiredAmendmentClauses(agenda: { type: AgendaType | null; titl
   return AMENDMENT_RULES.filter((r) => r.pattern.test(text)).map((r) => r.clauseId);
 }
 
+/**
+ * 글 속에 적힌 조항 번호를 모두 찾아 가이드라인 모양("3.3.1)", "3.3 표")으로 돌려줍니다. (갭 분석 M-2)
+ * 날짜(2026.12.31))나 비율(2.0%)을 조항 번호로 착각하지 않도록, 앞에 숫자나 점이 붙은 것은 뺍니다.
+ */
+export function clauseIdsInText(text: string): string[] {
+  const found = text.match(/(?<![\d.])\d{1,2}\.\d{1,2}\.\d{1,2}\)|(?<![\d.])\d{1,2}\.\d{1,2}\s?표/g) ?? [];
+  return [...new Set(found.map((raw) => normalizeClauseId(raw)).filter((id): id is string => id !== null))];
+}
+
 /** 안건 유형의 조항 범위를 AI에게 보여 줄 글로 (예: "4장, 2.25·2.26·2.27절"). 유형을 모르면 "전체" (PLAN 작업 21) */
 export function scopeText(type: AgendaType | null): string {
   if (!type) return "전체";

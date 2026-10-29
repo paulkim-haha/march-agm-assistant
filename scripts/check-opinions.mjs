@@ -98,7 +98,7 @@ if (!process.argv.includes("--live")) {
       opinions: [
         { agendaNumber: "제1호", judgment: "찬성", reason: "1.1.1)에 따라 감사의견이 적정이고 매출액이 7.4% 늘어 찬성한다.", summary: "감사의견 적정", managerChecks: ["재무제표 안건에는 담당자 확인 칸을 쓰지 않음"] },
         { agendaNumber: "제2-1호", judgment: "반대", reason: longReason, summary: "재직 6년", managerChecks: ["다른 회사 겸직 현황 확인"] },
-        { agendaNumber: "제3호", judgment: "찬성", reason: "3.6.2)를 검토한 결과 찬성한다.", summary: "", managerChecks: [] },
+        { agendaNumber: "제3호", judgment: "찬성", reason: "3.6.2)를 검토하고 3.3 표도 함께 보았으나(2026.12.31) 기준) 찬성한다.", summary: "", managerChecks: [] },
         { agendaNumber: "제4호", judgment: "반대", reason: "4.1.1)에 따라 한도가 33.3% 늘었으나 영업이익은 77.7% 증가에 그쳐 반대한다.", summary: "", managerChecks: [] },
       ],
     },
@@ -120,6 +120,9 @@ if (!process.argv.includes("--live")) {
   check("500자 넘은 사유는 다시 쓰게 함 (AI 2번)", fake.count(), 2);
   check("다시 쓴 사유로 바뀜 (판단은 그대로 반대)", [get("제2-1호").opinion, get("제2-1호").reason.length <= 500], ["반대", true]);
   check("조항 없는 제2-2호는 판단 보류", [get("제2-2호").opinion, get("제2-2호").guidelineJudgment], ["판단 보류", "판단 보류"]);
+  // 갭 분석 M-2: 사유에 적은 조항이 근거 목록에 없으면 경고 (날짜 2026.12.31)는 조항으로 착각하지 않음)
+  const stray = r.warnings.filter((w) => w.message.includes("근거 조항 목록에 없습니다"));
+  check("제3호 사유의 근거 목록에 없는 조항(3.3 표) 경고", [stray.length, stray[0]?.agendaNumber, stray[0]?.message.includes("3.3 표")], [1, "제3호", true]);
   check("제4호 사유의 지어낸 숫자(77.7) 경고", r.warnings.find((w) => w.kind === "숫자 불일치")?.message.includes("77.7"), true);
   check("자료·계산에 있는 숫자(7.4, 33.3)는 경고 안 함", r.warnings.filter((w) => w.kind === "숫자 불일치").length, 1);
   check("선임 안건만 담당자 판단 필요 사항", [get("제1호").managerChecks.length, get("제2-1호").managerChecks], [0, ["다른 회사 겸직 현황 확인"]]);
