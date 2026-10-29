@@ -2,6 +2,7 @@
 // 배경은 따로 영상 없이 페이지의 화사한 라벤더빛 바탕과 벚꽃 그림 위에 그대로 올라갑니다.
 
 import { CalendarCheckIcon } from "./Icons";
+import IntroImage from "./IntroImage";
 import TitleLogo from "./TitleLogo";
 
 export default function Hero() {
@@ -17,14 +18,14 @@ export default function Hero() {
           <TitleLogo className="h-auto w-full drop-shadow-[0_10px_18px_rgba(15,76,92,0.25)]" />
         </h1>
 
-        <p className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-4 py-1.5 text-sm font-bold tracking-[0.18em] text-[#0f4c5c] shadow-sm">
-          <CalendarCheckIcon size={16} />
+        <p className="inline-flex items-center gap-2.5 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-6 py-2.5 text-xl font-bold tracking-[0.14em] text-[#0f4c5c] shadow-sm sm:text-3xl">
+          <CalendarCheckIcon size={28} />
           AI 주총 어시스턴트
         </p>
-        {/* 소개 문장: 제목 색과 어울리는 따뜻한 크림·핑크 박스 + 짙은 갈색 글자로 또렷하게 */}
-        <p className="max-w-xl rounded-2xl border border-[#ffd8b8] bg-linear-to-br from-[#fff4d6] to-[#ffe3ea] px-6 py-4 text-[15px] font-medium leading-7 text-[#4a2f1b] shadow-card">
-          주주총회 소집통지서를 올리면, 의결권 행사 가이드라인에 맞춰 안건별 검토 의견과 사유 초안을 만들어 드립니다.
-        </p>
+        {/* 소개 문장: 따뜻한 크림·핑크 박스 안에 이미지(그림 글자)로 */}
+        <div className="w-full max-w-xl rounded-2xl border border-[#ffd8b8] bg-linear-to-br from-[#fff4d6] to-[#ffe3ea] px-5 py-4 shadow-card sm:px-7">
+          <IntroImage className="h-auto w-full" />
+        </div>
       </div>
     </header>
   );
