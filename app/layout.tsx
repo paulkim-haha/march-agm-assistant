@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
+import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
 // 화면 전체에 쓰는 한글 글꼴입니다. (굵기를 자유롭게 쓸 수 있는 가변 글꼴)
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto",
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+  preload: false,
+});
+
+// 히어로 제목(로고 글자)에 쓰는 아주 굵고 강렬한 한글 제목용 글꼴입니다.
+const blackHanSans = Black_Han_Sans({
+  variable: "--font-black-han",
+  weight: "400",
   display: "swap",
   preload: false,
 });
@@ -19,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${notoSansKr.variable} h-full antialiased`}>
+    <html lang="ko" className={`${notoSansKr.variable} ${blackHanSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

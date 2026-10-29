@@ -98,6 +98,11 @@
   --color-absent-soft: var(--absent-soft);
   --color-absent-ink: var(--absent-ink);
   --shadow-card: var(--shadow);
+  /* 동영상 히어로에 쓰는 크림·숲색 (밝은 풍경 영상 위에서도 글자가 또렷하도록 모드와 상관없이 고정) */
+  --color-forest: #2d3a2e;
+  --color-forest-green: #3d5a3e;
+  --color-cream: #faf8f5;
+  --font-helvetica: "Helvetica Neue Light", Helvetica, Arial, var(--font-noto), sans-serif;
   /* 글꼴: 한글이 예쁜 Noto Sans KR을 쓰고, 못 불러오면 윈도우·맥의 한글 글꼴로 대신합니다. */
   --font-sans: var(--font-noto), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
 }
@@ -111,6 +116,28 @@ html {
     radial-gradient(900px 360px at 85% -80px, color-mix(in srgb, var(--brand-2) 16%, transparent), transparent),
     radial-gradient(900px 380px at 5% -120px, color-mix(in srgb, var(--brand) 14%, transparent), transparent),
     var(--bg);
+}
+
+/* 등장 애니메이션: 상단 바는 위에서 아래로, 히어로 글자는 아래에서 위로 부드럽게 나타남 */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-down { animation: fade-down 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 240ms; }
+.stagger-4 { animation-delay: 360ms; }
+.stagger-5 { animation-delay: 480ms; }
+.stagger-6 { animation-delay: 600ms; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-down { animation: none; }
 }
 
 /* 어두운 모드에서는 벚꽃잎이 탁해 보이지 않게 더 환하게 */

@@ -121,7 +121,7 @@ export default function UploadForm({ onReport }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6">
+    <section id="upload" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-5 shadow-card sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
