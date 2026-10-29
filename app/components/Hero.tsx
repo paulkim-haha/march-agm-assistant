@@ -17,7 +17,7 @@ export default function Hero() {
           <TitleLogo className="h-auto w-full drop-shadow-[0_10px_18px_rgba(15,76,92,0.25)]" />
         </h1>
 
-        <p className="inline-flex items-center gap-2 rounded-full bg-brand-soft px-4 py-1.5 text-sm font-bold tracking-[0.18em] text-brand-strong">
+        <p className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-4 py-1.5 text-sm font-bold tracking-[0.18em] text-[#0f4c5c] shadow-sm">
           <CalendarCheckIcon size={16} />
           AI 주총 어시스턴트
         </p>

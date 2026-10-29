@@ -136,7 +136,7 @@ export default function UploadForm({ onReport }: Props) {
         {/* 캐릭터 "주총이": 상황에 따라 표정과 말풍선이 바뀜 */}
         <div className="flex shrink-0 flex-col items-center gap-1 sm:flex-row-reverse sm:items-center sm:gap-2">
           <Mascot mood={mascotMood} size={96} className="sm:size-[112px]" />
-          <p className="max-w-[9.5rem] rounded-2xl rounded-br-sm bg-brand-soft px-3 py-2 text-center text-xs font-semibold leading-5 text-brand-strong sm:rounded-br-2xl sm:rounded-r-sm">
+          <p className="max-w-[9.5rem] rounded-2xl rounded-br-sm bg-[#fff1d6] px-3 py-2 text-center text-xs font-semibold leading-5 text-[#0f4c5c] sm:rounded-br-2xl sm:rounded-r-sm">
             {mascotSays}
           </p>
         </div>
