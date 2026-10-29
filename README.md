@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 3월을 부탁해 (AI 주총 어시스턴트)
 
-## Getting Started
+주주총회 **소집통지서를 올리면**, 금융투자협회 「자산운용사 의결권 행사 가이드라인」에 맞춰 **안건별 검토 의견과 사유 초안**을 만들어 주는 국유증권 담당자용 도구입니다.
 
-First, run the development server:
+> ⚠️ 실습·심사용 프로젝트입니다. **가상 자료와 공개 자료만** 사용하세요. 올린 문서는 분석을 위해 외부 AI 서비스(OpenAI)로 전송되며, 이 앱은 올린 파일과 검토 결과를 **저장하지 않습니다.**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **배포 주소:** (배포 후 아래 "배포 정보"에 적어 둡니다)
+- **기획·계획 문서(심사 자료):** [`PRD.md`](./PRD.md) · [`PLAN.md`](./PLAN.md)
+
+## 어떤 문제를 푸나요?
+
+정기 주주총회가 3월에 몰리면, 담당자는 안건마다 소집공고를 의결권 행사기준 조항과 하나하나 대조해 의견과 사유를 써야 합니다. 안건 1건에 약 2시간이 걸리고, 담당자마다 검토 깊이와 사유 형식이 달라집니다.
+이 앱은 조항 대조와 초안 작성을 자동화하고, **최종 판단은 항상 담당자가** 합니다.
+
+## 주요 기능
+
+| 기능 | 설명 |
+|---|---|
+| 소집통지서 올리기 | PDF·.md·.txt 파일 1~5개(합계 4MB). 소집통지서와 안건 설명서가 따로 있어도 함께 올리면 하나의 보고서로 분석 |
+| 주주총회 개요표 | 일시·장소·부의안건·보유지분율(수량)·참석여부·불참사유를 보고서 맨 앞에 정리 |
+| 안건 분류 + 조항 대조 | 안건마다 가이드라인 조항을 최대 3개 찾아 **조항 번호와 원문을 근거 박스**로 보여 줌. 못 찾으면 "판단 보류" |
+| 의견 + 사유 초안 | 찬성/반대/불참과 500자 이내 **개조식** 사유. 이사·감사 선임 안건은 "담당자 판단 필요 사항"을 따로 표시 |
+| 재무·보수한도 비교 | 별도재무제표 기준 매출액·영업이익·당기순이익·자산총계의 **전기 대비** 증감액·증감률, 이사·감사 보수한도 적정성 표시 |
+| 불참 자동 판정 | 이해관계인 보유주식이 발행주식총수의 2/3 이상이면 모든 안건을 불참으로 판정 |
+| 수정·복사 | 담당자가 의견·사유를 화면에서 바꾸면 참석여부·경고를 바로 다시 판정하고, 한글·엑셀(표)/메모장(글자)용으로 한 번에 복사 |
+
+## 이렇게 동작합니다
+
+숫자 계산과 판정은 **코드**가 하고, AI는 글자 뽑기·조항 고르기·사유 쓰기만 합니다. AI 답은 코드가 다시 검사합니다.
+
+```
+파일 글자 뽑기(코드) → 정보 뽑기(AI) → 계산·판정(코드: 지분율·불참·증감률·보수한도)
+→ 조항 고르기(AI, 없는 번호는 코드가 삭제) → 의견·사유 쓰기(AI) → 보고서 조립(코드)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- 근거 조항은 앱에 탑재된 가이드라인(`data/guideline.json`)에 실제 있는 번호만 인용
+- 사유 속 숫자는 자료·계산값에 있는지 코드로 확인, 500자 초과·불일치는 경고
+- 보유주식 명세표(`data/보유주식_명세표.csv`)는 **가상 자료**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 기술 스택
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · [unpdf](https://github.com/unjs/unpdf)(PDF 글자 읽기) · [zod](https://zod.dev)(AI 답 검사) · OpenAI API · Vercel 배포
 
-## Learn More
+## 직접 실행하기
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+# 프로젝트 폴더에 .env 파일을 만들고 아래 "환경 변수" 3개를 적습니다
+npm run dev            # http://localhost:3000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 환경 변수 (`.env`, 저장소에는 올리지 않습니다)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 이름 | 용도 |
+|---|---|
+| `OPENAI_API_KEY` | OpenAI API 키 (서버 코드에서만 사용) |
+| `OPENAI_MODEL` | 정보 뽑기·조항 고르기·500자 줄이기에 쓰는 모델 |
+| `OPENAI_MODEL_OPINION` | 의견·사유 쓰기에 쓰는 모델 (기준 비교가 정확해야 해서 큰 모델 권장) |
 
-## Deploy on Vercel
+### 확인 스크립트
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint && npm run build     # 코드 규칙·빌드 확인
+npm run check:calc                # 계산·판정 함수 확인 (AI 호출 없음, check:* 여러 개)
+npm run score:live                # 가상 5개사 자료를 실제 AI로 돌려 채점 (AI 사용량 발생)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`sample-data/`에 가상 소집통지서 5개사(+ 나뉜 파일 예시)가 있습니다. 채점표 파일(`00_…업로드금지.md`)은 앱이 읽거나 AI에 보내지 않도록 막혀 있습니다.
+
+## 폴더 구조
+
+```
+app/            화면(page.tsx)과 검토 API(app/api/review/route.ts), 화면 부품(components/)
+lib/            계산·판정(calc.ts), 파일 읽기, AI 연결(ai.ts), 검토 단계 연결(review.ts) 등
+data/           앱에 탑재한 자료: 가이드라인 PDF·조항 데이터, 보유주식 명세표(가상)
+sample-data/    가상 소집통지서와 채점표
+scripts/        단계별 확인 스크립트(check-*.mjs), 채점 스크립트
+docs/           갭 분석 결과
+PRD.md  PLAN.md  DESIGN.md  CLAUDE.md   기획서·계획서·설계서·작업 규칙
+```
+
+## 문서
+
+- [`PRD.md`](./PRD.md) — 서비스 기획서 (무엇을·왜 만드는지, AI가 지킬 규칙)
+- [`PLAN.md`](./PLAN.md) — 개발 계획서 (성공 기준과 작업 목록 1~22)
+- [`DESIGN.md`](./DESIGN.md) — 설계서 (데이터 흐름·화면·오류 처리)
+- [`docs/03-analysis/agm-review.analysis.md`](./docs/03-analysis/agm-review.analysis.md) — 기획·설계와 구현 비교(갭 분석)
+
+## 만들지 않은 것
+
+로그인·회원 관리, 검토 결과의 데이터베이스 저장, 파일 내려받기, 전자투표·사내 결재 등 외부 시스템 연동은 이번 범위에서 제외했습니다. (PRD 6장)
+
+## 만든 사람
+
+폴킴 · Claude Code와 함께 개발
