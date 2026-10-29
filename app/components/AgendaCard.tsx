@@ -26,12 +26,12 @@ function FinancialTable({ rows, dividend }: { rows: FinancialRow[]; dividend?: D
   }
   return (
     <div className="overflow-x-auto rounded-xl border border-line">
-      <table className="w-full min-w-[420px] text-sm">
-        <caption className="bg-surface-2 px-3 py-2 text-left text-xs font-semibold text-ink-3">
+      <table className="w-full min-w-[460px] text-base">
+        <caption className="bg-surface-2 px-3 py-2 text-left text-sm font-semibold text-ink-3">
           재무 변동표 (별도재무제표, 단위: 백만 원)
         </caption>
         <thead>
-          <tr className="border-y border-line text-xs text-ink-3">
+          <tr className="border-y border-line text-sm text-ink-3">
             <th className="px-3 py-1.5 text-left font-semibold">항목</th>
             <th className="px-3 py-1.5 text-right font-semibold">전기</th>
             <th className="px-3 py-1.5 text-right font-semibold">당기</th>
@@ -67,7 +67,7 @@ function FinancialTable({ rows, dividend }: { rows: FinancialRow[]; dividend?: D
 /** 보수한도 비교 (단위: 억 원) */
 function PayLimitBox({ pay }: { pay: PayLimit }) {
   return (
-    <div className="rounded-xl bg-surface-2 px-3.5 py-3 text-sm">
+    <div className="rounded-xl bg-surface-2 px-3.5 py-3 text-base">
       <p className="font-medium">
         {pay.target} 보수한도{" "}
         <span className="tabular-nums">
@@ -199,7 +199,7 @@ export default function AgendaCard({
 
         {/* 사유 글상자: 직접 고칠 수 있고, 500자를 넘으면 빨간 글자로 알려 줌 */}
         <section>
-          <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-ink-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-sm text-ink-3">
             <label htmlFor={reasonId} className="font-semibold">
               사유{reasonEdited && <span className="ml-2 font-medium text-brand-strong">(담당자가 고침)</span>}
             </label>
@@ -211,7 +211,7 @@ export default function AgendaCard({
             id={reasonId}
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
-            className={`field-sizing-content min-h-24 w-full resize-y rounded-xl border bg-surface-2 px-3.5 py-3 text-sm leading-7 text-ink transition focus:bg-surface ${
+            className={`field-sizing-content min-h-24 w-full resize-y rounded-xl border bg-surface-2 px-3.5 py-3 text-base leading-8 text-ink transition focus:bg-surface ${
               over ? "border-bad" : "border-line"
             }`}
           />

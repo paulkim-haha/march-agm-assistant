@@ -102,11 +102,11 @@ export default function ReportView({ report: base }: { report: Report }) {
 
       {/* ■ 주주총회 개요표 */}
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-        <h3 className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-3 text-sm font-bold text-ink">
+        <h3 className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-3 text-base font-bold text-ink">
           <TableIcon size={17} className="text-brand" />
           주주총회 개요
         </h3>
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <tbody>
             <Row label="일시">{overview.dateTime || <Missing />}</Row>
             <Row label="장소">{overview.place || <Missing />}</Row>
@@ -130,7 +130,7 @@ export default function ReportView({ report: base }: { report: Report }) {
             <Row label="참석여부">
               <AttendanceBadge value={overview.attendance} />
               {overview.attendance === "판정 대기" && (
-                <span className="ml-2 text-xs text-ink-3">(판단 보류 안건의 의견을 정하면 판정됩니다)</span>
+                <span className="ml-2 text-sm text-ink-3">(판단 보류 안건의 의견을 정하면 판정됩니다)</span>
               )}
             </Row>
             <Row label="불참사유">{overview.absenceReason}</Row>
@@ -238,7 +238,7 @@ function AttendanceBadge({ value }: { value: string }) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <tr className="border-b border-line last:border-0">
-      <th className="w-24 bg-surface-2 px-4 py-3 text-left align-top text-xs font-semibold text-ink-3 sm:w-32">{label}</th>
+      <th className="w-28 bg-surface-2 px-4 py-3 text-left align-top text-sm font-semibold text-ink-2 sm:w-36">{label}</th>
       <td className="px-4 py-3 leading-6 text-ink">{children}</td>
     </tr>
   );
