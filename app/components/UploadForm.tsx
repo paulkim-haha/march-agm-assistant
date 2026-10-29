@@ -128,9 +128,9 @@ export default function UploadForm({ onReport }: Props) {
             <UploadIcon className="text-brand" size={20} />
             소집통지서 올리기
           </h2>
-          <p className="mt-1.5 text-sm leading-6 text-ink-2">
+          <p className="mt-2 rounded-xl border border-[#ffd8b8] bg-linear-to-br from-[#fff4d6] to-[#ffe3ea] px-3.5 py-2.5 text-sm leading-6 text-[#4a2f1b]">
             회사 1곳의 소집통지서를 올려 주세요. 소집통지서와 안건 설명서가 따로 있으면 함께 고르면 됩니다.
-            <span className="text-ink-3"> (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)</span>
+            <span className="text-[#7a5233]"> (PDF·.md·.txt, 최대 {RULES.maxFiles}개, 합계 4MB)</span>
           </p>
         </div>
         {/* 캐릭터 "주총이": 상황에 따라 표정과 말풍선이 바뀜 */}
