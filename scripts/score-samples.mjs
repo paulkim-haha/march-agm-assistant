@@ -9,6 +9,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ReviewError } from "../lib/extract-text.ts";
+import { normalizeCompanyName } from "../lib/holdings.ts";
 import { runReview } from "../lib/review.ts";
 
 process.loadEnvFile(".env");
@@ -124,7 +125,7 @@ async function scoreScenario(key, ex) {
   const { overview, reviews, financials, warnings } = report;
   console.log(`  (${(timings.total / 1000).toFixed(1)}초, 경고 ${warnings.length}건)`);
 
-  check(key, "회사 이름", report.companyName === ex.company, report.companyName);
+  check(key, "회사 이름", normalizeCompanyName(report.companyName) === normalizeCompanyName(ex.company), report.companyName); // "주식회사" 같은 말은 떼고 비교
   if (ex.attendance) check(key, "참석여부", overview.attendance === ex.attendance, overview.attendance);
   if (ex.ownership) {
     const [ratio, shares] = ex.ownership;
