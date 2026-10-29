@@ -4,7 +4,8 @@
 
 > ⚠️ 실습·심사용 프로젝트입니다. **가상 자료와 공개 자료만** 사용하세요. 올린 문서는 분석을 위해 외부 AI 서비스(OpenAI)로 전송되며, 이 앱은 올린 파일과 검토 결과를 **저장하지 않습니다.**
 
-- **배포 주소:** (배포 후 아래 "배포 정보"에 적어 둡니다)
+- **배포 주소:** https://march-agm-assistant.vercel.app
+- **GitHub 저장소:** https://github.com/paulkim-haha/march-agm-assistant
 - **기획·계획 문서(심사 자료):** [`PRD.md`](./PRD.md) · [`PLAN.md`](./PLAN.md)
 
 ## 어떤 문제를 푸나요?
@@ -85,6 +86,13 @@ PRD.md  PLAN.md  DESIGN.md  CLAUDE.md   기획서·계획서·설계서·작업 
 - [`PLAN.md`](./PLAN.md) — 개발 계획서 (성공 기준과 작업 목록 1~22)
 - [`DESIGN.md`](./DESIGN.md) — 설계서 (데이터 흐름·화면·오류 처리)
 - [`docs/03-analysis/agm-review.analysis.md`](./docs/03-analysis/agm-review.analysis.md) — 기획·설계와 구현 비교(갭 분석)
+
+## 배포 정보
+
+- **배포:** Vercel CLI로 배포 (프로덕션 주소는 로그인 없이 열립니다)
+- **Vercel 환경 변수:** 앱이 실제로 쓰는 `OPENAI_API_KEY`·`OPENAI_MODEL`·`OPENAI_MODEL_OPINION` 3개만 등록 (GitHub·Vercel 등 관리용 토큰은 등록하지 않음)
+- **실행 시간:** 검토 API는 최대 300초(`maxDuration`)로 설정. 회사 1곳 검토에 보통 20~60초 걸립니다.
+- ⚠️ 이 앱에는 로그인이 없어서 주소를 아는 누구나 검토를 실행할 수 있고, 그만큼 OpenAI 사용량이 발생합니다. 실습·심사 기간에만 열어 두는 것을 권장합니다.
 
 ## 만들지 않은 것
 
