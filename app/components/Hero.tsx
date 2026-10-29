@@ -1,8 +1,8 @@
 // 화면 맨 위 머리말입니다. 앱 이름을 이미지(그림 글자 로고)로 가운데에 크게 보여 주고, 그 아래에 안내를 둡니다.
 // 배경은 따로 영상 없이 페이지의 화사한 라벤더빛 바탕과 벚꽃 그림 위에 그대로 올라갑니다.
 
-import { CalendarCheckIcon } from "./Icons";
 import IntroImage from "./IntroImage";
+import Mascot from "./Mascot";
 import TitleLogo from "./TitleLogo";
 
 export default function Hero() {
@@ -19,7 +19,7 @@ export default function Hero() {
         </h1>
 
         <p className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-5 py-2 text-lg font-bold tracking-[0.12em] text-[#0f4c5c] shadow-sm sm:text-2xl">
-          <CalendarCheckIcon size={22} />
+          <Mascot size={40} className="-my-2 -ml-2" />
           AI 주총 어시스턴트
         </p>
         {/* 소개 문장: 따뜻한 크림·핑크 박스 안에 이미지(그림 글자)로 */}
