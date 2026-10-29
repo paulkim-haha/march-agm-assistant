@@ -18,8 +18,8 @@ export default function Hero() {
           <TitleLogo className="h-auto w-full drop-shadow-[0_10px_18px_rgba(15,76,92,0.25)]" />
         </h1>
 
-        <p className="inline-flex items-center gap-2.5 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-6 py-2.5 text-xl font-bold tracking-[0.14em] text-[#0f4c5c] shadow-sm sm:text-3xl">
-          <CalendarCheckIcon size={28} />
+        <p className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-[#ffe9a8] via-[#ffd3b0] to-[#ffc2d4] px-5 py-2 text-lg font-bold tracking-[0.12em] text-[#0f4c5c] shadow-sm sm:text-2xl">
+          <CalendarCheckIcon size={22} />
           AI 주총 어시스턴트
         </p>
         {/* 소개 문장: 따뜻한 크림·핑크 박스 안에 이미지(그림 글자)로 */}
