@@ -26,10 +26,10 @@ export const formatSigned = (n: number | null | undefined) =>
 
 /** 보수한도 비교를 한 줄 글로 (예: "이사 보수한도 30억 원 → 40억 원 (+33.3%)") */
 export function payLimitText(pay: PayLimit): string {
-  const lines = [`${pay.target} 보수한도 ${formatNumber(pay.previous)}억 원 → ${formatNumber(pay.current)}억 원 (${formatRate(pay.changeRate)})`];
+  const lines = [`${pay.target} 보수한도 전기 ${formatNumber(pay.previous)}억 원 → 당기 ${formatNumber(pay.current)}억 원 (전기 대비 ${formatRate(pay.changeRate)})`];
   if (pay.target === "이사") {
     lines.push(
-      `영업이익 ${formatRate(pay.operatingIncomeRate)} · 당기순이익 ${formatRate(pay.netIncomeRate)}${pay.mixedDirection ? " · 두 지표의 방향이 엇갈림" : ""}`,
+      `영업이익 전기 대비 ${formatRate(pay.operatingIncomeRate)} · 당기순이익 전기 대비 ${formatRate(pay.netIncomeRate)}${pay.mixedDirection ? " · 두 지표의 방향이 엇갈림" : ""}`,
     );
   }
   if (pay.flag) lines.push(`⚠ ${pay.flag}`);
@@ -70,7 +70,7 @@ export function reportToTables(report: Report): CopyTable[] {
 
   // ■ 재무 변동표 (재무제표 안건이 있고 숫자가 있을 때만)
   if (financials.some((r) => r.current !== null || r.previous !== null)) {
-    const rows = [["항목", "전기", "당기", "증감액", "증감률"]];
+    const rows = [["항목", "전기", "당기", "전기 대비 증감액", "전기 대비 증감률"]];
     for (const r of financials) {
       rows.push([
         r.item,

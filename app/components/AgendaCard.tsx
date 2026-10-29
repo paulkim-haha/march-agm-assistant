@@ -35,8 +35,8 @@ function FinancialTable({ rows, dividend }: { rows: FinancialRow[]; dividend?: D
             <th className="px-3 py-1.5 text-left font-semibold">항목</th>
             <th className="px-3 py-1.5 text-right font-semibold">전기</th>
             <th className="px-3 py-1.5 text-right font-semibold">당기</th>
-            <th className="px-3 py-1.5 text-right font-semibold">증감액</th>
-            <th className="px-3 py-1.5 text-right font-semibold">증감률</th>
+            <th className="px-3 py-1.5 text-right font-semibold">전기 대비 증감액</th>
+            <th className="px-3 py-1.5 text-right font-semibold">전기 대비 증감률</th>
           </tr>
         </thead>
         <tbody>
@@ -73,11 +73,11 @@ function PayLimitBox({ pay }: { pay: PayLimit }) {
         <span className="tabular-nums">
           {num(pay.previous)}억 원 → {num(pay.current)}억 원
         </span>{" "}
-        <span className="text-ink-2">({pct(pay.changeRate)})</span>
+        <span className="text-ink-2">(전기 대비 {pct(pay.changeRate)})</span>
       </p>
       {pay.target === "이사" && (
         <p className="mt-0.5 text-ink-2">
-          영업이익 {pct(pay.operatingIncomeRate)} · 당기순이익 {pct(pay.netIncomeRate)}
+          영업이익 전기 대비 {pct(pay.operatingIncomeRate)} · 당기순이익 전기 대비 {pct(pay.netIncomeRate)}
           {pay.mixedDirection && " · 두 지표의 방향이 엇갈림"}
         </p>
       )}

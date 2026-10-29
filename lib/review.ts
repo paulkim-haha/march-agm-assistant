@@ -470,15 +470,15 @@ function financialText(rows: FinancialRow[]): string {
     .filter((r) => r.current !== null || r.previous !== null)
     .map((r) => {
       const rate = r.lossLabel && r.changeRate === null ? r.lossLabel : `${pct(r.changeRate)}${r.lossLabel ? `, ${r.lossLabel}` : ""}`;
-      return `${r.item} ${fmt(r.previous)} → ${fmt(r.current)} (증감 ${r.change !== null && r.change > 0 ? "+" : ""}${fmt(r.change)}, ${rate})`;
+      return `${r.item} 전기 ${fmt(r.previous)}백만 원 → 당기 ${fmt(r.current)}백만 원 (전기 대비 증감 ${r.change !== null && r.change > 0 ? "+" : ""}${fmt(r.change)}백만 원, 전기 대비 ${rate})`;
     })
     .join("; ");
 }
 
 /** 보수한도 비교 결과를 AI에게 넘길 한 줄 글로 바꿉니다. */
 function payLimitText(p: PayLimit): string {
-  let s = `${p.target} 보수한도 ${fmt(p.previous)}억 원 → ${fmt(p.current)}억 원 (${pct(p.changeRate)})`;
-  if (p.target === "이사") s += `, 영업이익 ${pct(p.operatingIncomeRate)}, 당기순이익 ${pct(p.netIncomeRate)}`;
+  let s = `${p.target} 보수한도 전기 ${fmt(p.previous)}억 원 → 당기 ${fmt(p.current)}억 원 (전기 대비 ${pct(p.changeRate)})`;
+  if (p.target === "이사") s += `, 영업이익 전기 대비 ${pct(p.operatingIncomeRate)}, 당기순이익 전기 대비 ${pct(p.netIncomeRate)}`;
   if (p.mixedDirection) s += ", 영업이익과 당기순이익의 방향이 엇갈림";
   s += p.flag ? ` → 표시: ${p.flag}` : " → 표시 없음";
   return s;
