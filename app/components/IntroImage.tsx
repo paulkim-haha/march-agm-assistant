@@ -11,12 +11,12 @@ export const INTRO_SENTENCE =
 
 export default function IntroImage({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 640 92" role="img" aria-label={INTRO_SENTENCE} className={className}>
+    <svg viewBox="0 0 536 84" role="img" aria-label={INTRO_SENTENCE} className={className}>
       <g textAnchor="middle" fontFamily={FONT} fontSize="22" fill={INK}>
-        <text x="320" y="32">
+        <text x="268" y="29">
           주주총회 <tspan fill={HI}>소집통지서</tspan>를 올리면, 의결권 행사 <tspan fill={HI}>가이드라인</tspan>에 맞춰
         </text>
-        <text x="320" y="72">
+        <text x="268" y="67">
           안건별 검토 의견과 사유 초안을 만들어 드려요
         </text>
       </g>
