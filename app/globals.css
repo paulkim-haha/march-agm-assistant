@@ -2,56 +2,58 @@
 
 /*
  * 화면 색상 체계입니다. (밝은 모드 / 어두운 모드)
- * 바탕은 살짝 푸른 회색, 포인트는 차분한 남보라(인디고)로 맞춰 금융 문서 도구답게 믿음직하고 깔끔한 인상을 줍니다.
+ * 바탕은 연한 라벤더빛 흰색, 포인트는 생기 있는 인디고와 밝은 보라로 맞춰 화사하면서도 깔끔한 인상을 줍니다.
  * 찬성·반대·불참·보류는 색만 보고도 구분되도록 초록·붉은 장미·회청·호박색으로 정했습니다.
  * 색을 바꾸고 싶으면 아래 숫자(#...)만 고치면 화면 전체에 반영됩니다.
  */
 :root {
-  /* 밝은 톤: 맑은 하늘빛이 도는 바탕에 한 톤 가벼운 인디고를 포인트로, 모든 색을 같은 파란 계열 안에서 맞춤 */
-  --bg: #f6f8ff;
+  /* 화사한 톤: 연한 라벤더빛 흰 바탕에, 생기 있는 인디고와 밝은 보라를 짝지어 포인트로 씀. 모든 색은 같은 청보라 계열에서 골라 어울림 */
+  --bg: #f8f7ff;
   --surface: #ffffff;
-  --surface-2: #fafbff;
-  --ink: #1f2a44;
-  --ink-2: #55607a;
-  --ink-3: #6b7690;
-  --line: #e4e9f7;
+  --surface-2: #fbfaff;
+  --ink: #232745;
+  --ink-2: #5a5f80;
+  --ink-3: #6f7494;
+  --line: #e9e6fb;
 
-  --brand: #4860e6;
-  --brand-strong: #3a4fd1;
-  --brand-soft: #eef1ff;
+  --brand: #5258ee;
+  --brand-2: #a05cf2;
+  --brand-strong: #4046d4;
+  --brand-soft: #efeeff;
   --brand-ink: #ffffff;
 
-  --ok: #17b27a;
-  --ok-soft: #e6f9f1;
-  --ok-ink: #0c7a55;
-  --bad: #ec5b73;
-  --bad-soft: #fff0f3;
-  --bad-ink: #bf2f4a;
-  --hold: #e0a030;
-  --hold-soft: #fff6e0;
-  --hold-ink: #94620a;
-  --absent: #7a8699;
-  --absent-soft: #eef1f7;
-  --absent-ink: #4a5568;
+  --ok: #1fbf8a;
+  --ok-soft: #e3fbf1;
+  --ok-ink: #0b7d58;
+  --bad: #f2587a;
+  --bad-soft: #ffeef3;
+  --bad-ink: #c42a52;
+  --hold: #ffb020;
+  --hold-soft: #fff4d6;
+  --hold-ink: #8f5a00;
+  --absent: #8b92b5;
+  --absent-soft: #efeffa;
+  --absent-ink: #4f5478;
 
-  --shadow: 0 1px 2px rgb(72 96 230 / 0.06), 0 6px 20px rgb(72 96 230 / 0.07);
+  --shadow: 0 1px 2px rgb(82 88 238 / 0.07), 0 8px 24px rgb(120 90 240 / 0.09);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 어두운 모드도 한 단계 밝게: 너무 검지 않은 남색 바탕 */
-    --bg: #11172a;
-    --surface: #1a2238;
-    --surface-2: #212a45;
-    --ink: #eef1fa;
-    --ink-2: #b4bdd2;
-    --ink-3: #8590aa;
-    --line: #2f3a58;
+    /* 어두운 모드도 화사하게: 깊은 남보라 바탕에 밝은 라벤더 포인트 */
+    --bg: #14122e;
+    --surface: #1e1b44;
+    --surface-2: #27235a;
+    --ink: #f2f0ff;
+    --ink-2: #c0bcea;
+    --ink-3: #9591c4;
+    --line: #38336f;
 
-    --brand: #93a4ff;
-    --brand-strong: #b3beff;
-    --brand-soft: #242e57;
-    --brand-ink: #11172a;
+    --brand: #a5a8ff;
+    --brand-2: #c79bff;
+    --brand-strong: #c4c6ff;
+    --brand-soft: #2e2a6b;
+    --brand-ink: #14122e;
 
     --ok: #4bdba5;
     --ok-soft: #14332a;
@@ -62,9 +64,9 @@
     --hold: #f3bf5a;
     --hold-soft: #3a2e14;
     --hold-ink: #f6cd82;
-    --absent: #a2acc2;
-    --absent-soft: #262f48;
-    --absent-ink: #c9d1e2;
+    --absent: #a9b0d0;
+    --absent-soft: #2a2760;
+    --absent-ink: #cfd3ee;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
   }
@@ -79,6 +81,7 @@
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
   --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
   --color-brand-strong: var(--brand-strong);
   --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
@@ -105,7 +108,10 @@ html {
 
 body {
   /* 위쪽에 아주 옅은 포인트색을 깔아 화면이 산뜻하고 밝게 보이도록 */
-  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 75%, var(--bg)) 0, var(--bg) 360px) no-repeat, var(--bg);
+  background:
+    radial-gradient(900px 360px at 85% -80px, color-mix(in srgb, var(--brand-2) 16%, transparent), transparent),
+    radial-gradient(900px 380px at 5% -120px, color-mix(in srgb, var(--brand) 14%, transparent), transparent),
+    var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   line-height: 1.6;

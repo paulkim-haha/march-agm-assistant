@@ -165,19 +165,20 @@ export function absenceOpinionReason(
   judgment: GuidelineJudgment,
   summary: string,
 ): string {
-  const tail =
-    `${relatedPartyPhrase(holding)} 당사 지분(${percent(holding.ourRatio)}%)의 ` +
-    `의결권 행사가 결과에 영향을 미치지 못하므로 불참한다.`;
+  // 개조식: 항목마다 줄을 바꿔 "- "로 시작하고, 문장이 아니라 구로 끝냄
   const gist = summary.trim().replace(/[.。]$/, "");
-
-  if (judgment === "판단 보류") {
-    // 근거 조항을 찾지 못한 경우: 담당자가 볼 수 있게 그 사실을 남김
-    return `의결권 행사기준상 해당 조항을 찾지 못해 판단을 보류하나(담당자 확인 필요), ${tail}`;
-  }
-  if (gist === "") {
-    return `의결권 행사기준에 따르면 ${judgment} 사유에 해당하나, ${tail}`;
-  }
-  return `의결권 행사기준에 따르면 ${gist}(${judgment} 사유)에 해당하나, ${tail}`;
+  const basis =
+    judgment === "판단 보류"
+      ? "- 의결권 행사기준상 해당 조항을 찾지 못해 판단 보류(담당자 확인 필요)"
+      : gist === ""
+        ? `- 의결권 행사기준 판단: ${judgment} 사유 해당`
+        : `- 의결권 행사기준 판단: ${gist}(${judgment} 사유) 해당`;
+  return [
+    basis,
+    `- 이해관계인(${holding.relatedPartyName}) ${withCommas(holding.relatedShares)}주(${percent(holding.relatedRatio)}%) 보유`,
+    `- 당사 지분(${percent(holding.ourRatio)}%)의 의결권 행사가 결과에 영향을 미치지 못함`,
+    "- 결론: 불참",
+  ].join("\n");
 }
 
 /**

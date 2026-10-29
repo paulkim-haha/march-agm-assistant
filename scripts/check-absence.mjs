@@ -58,15 +58,18 @@ check("'영향을 미치지 못함' 문구", overview.includes("결과에 영향
 
 const agenda = absenceOpinionReason(saebom, "찬성", "외부감사인의 감사의견이 적정이므로 재무제표 승인");
 console.log(`  안건 사유(찬성 판단): ${agenda}`);
-check("가이드라인 기준 판단이 앞에 옴", agenda.startsWith("의결권 행사기준에 따르면 외부감사인의"), true);
+check("가이드라인 기준 판단이 앞에 옴 (개조식 \"- \"로 시작)", agenda.startsWith("- 의결권 행사기준 판단: 외부감사인의"), true);
 check("판단 종류 표시", agenda.includes("(찬성 사유)"), true);
-check("불참으로 끝남", agenda.endsWith("영향을 미치지 못하므로 불참한다."), true);
+check("결론 불참으로 끝남", agenda.endsWith("- 결론: 불참"), true);
+check("항목 4개가 줄바꿈으로 나뉨", agenda.split("\n").length, 4);
+check("모든 줄이 \"- \"로 시작", agenda.split("\n").every((l) => l.startsWith("- ")), true);
+check("영향을 미치지 못함 문구", agenda.includes("결과에 영향을 미치지 못함"), true);
 check("500자 이내", agenda.length <= 500, true);
 
 const hold = absenceOpinionReason(saebom, "판단 보류", "");
 console.log(`  안건 사유(판단 보류): ${hold}`);
 check("판단 보류면 담당자 확인 표시", hold.includes("담당자 확인 필요"), true);
-check("판단 보류여도 불참으로 끝남", hold.endsWith("불참한다."), true);
+check("판단 보류여도 결론 불참으로 끝남", hold.endsWith("- 결론: 불참"), true);
 
 console.log(failed === 0 ? "\n모두 통과했습니다." : `\n${failed}개가 틀렸습니다.`);
 process.exitCode = failed === 0 ? 0 : 1;

@@ -146,8 +146,8 @@ if (!process.argv.includes("--live")) {
   );
   check("모든 안건이 불참", s.reviews.map((x) => x.opinion), ["불참", "불참"]);
   check("기준 판단은 남김", s.reviews.map((x) => x.guidelineJudgment), ["찬성", "판단 보류"]);
-  check("사유가 판단 요지로 시작", s.reviews[0].reason.startsWith("의결권 행사기준에 따르면 외부감사인의"), true);
-  check("사유가 '불참한다.'로 끝남", s.reviews.every((x) => x.reason.endsWith("불참한다.")), true);
+  check("사유가 판단 요지로 시작 (개조식)", s.reviews[0].reason.startsWith("- 의결권 행사기준 판단: 외부감사인의"), true);
+  check("사유가 '- 결론: 불참'으로 끝남", s.reviews.every((x) => x.reason.endsWith("- 결론: 불참")), true);
   check("사유에 이해관계인 지분율", s.reviews[0].reason.includes("69.0%"), true);
 } else {
   process.loadEnvFile(".env");
@@ -175,7 +175,7 @@ if (!process.argv.includes("--live")) {
       }
       if (file.startsWith("03")) {
         check("  모든 안건 불참", r.reviews.every((x) => x.opinion === "불참"), true);
-        check("  불참 사유에 69.0%와 '불참한다.'", r.reviews.every((x) => x.reason.includes("69.0%") && x.reason.endsWith("불참한다.")), true);
+        check("  불참 사유에 69.0%와 '결론: 불참'", r.reviews.every((x) => x.reason.includes("69.0%") && x.reason.endsWith("- 결론: 불참")), true);
       }
       if (file.startsWith("04")) {
         check("  박정우 사외이사(제2-1호) 반대", get("제2-1호")?.opinion, "반대");

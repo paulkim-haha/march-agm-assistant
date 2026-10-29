@@ -10,7 +10,7 @@ export default function Home() {
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3.5">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-ink shadow-card">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-brand to-brand-2 text-brand-ink shadow-card">
               <CalendarCheckIcon size={24} />
             </span>
             <div>
