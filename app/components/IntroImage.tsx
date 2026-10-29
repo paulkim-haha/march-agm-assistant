@@ -7,7 +7,7 @@ const INK = "#4a2f1b";
 const HI = "#c93a5e";
 
 export const INTRO_SENTENCE =
-  "주주총회 소집통지서를 올리면, 의결권 행사 가이드라인에 맞춰 안건별 검토 의견과 사유 초안을 만들어 드려요";
+  "주주총회 소집통지서를 올리면, 의결권 행사 가이드라인에 맞춰 안건별 검토 의견과 사유 초안을 만들어 드려요!";
 
 export default function IntroImage({ className = "" }: { className?: string }) {
   return (
@@ -17,7 +17,7 @@ export default function IntroImage({ className = "" }: { className?: string }) {
           주주총회 <tspan fill={HI}>소집통지서</tspan>를 올리면, 의결권 행사 <tspan fill={HI}>가이드라인</tspan>에 맞춰
         </text>
         <text x="268" y="67">
-          안건별 검토 의견과 사유 초안을 만들어 드려요
+          안건별 검토 의견과 사유 초안을 만들어 드려요!
         </text>
       </g>
     </svg>

@@ -24,7 +24,7 @@ export default function Hero() {
         </p>
         {/* 소개 문장: 따뜻한 크림·핑크 박스 안에 이미지(그림 글자)로 */}
         <div className="w-fit max-w-full rounded-2xl border border-[#ffd8b8] bg-linear-to-br from-[#fff4d6] to-[#ffe3ea] px-5 py-3 shadow-card sm:px-6">
-          <IntroImage className="h-auto w-[383px] max-w-full" />
+          <IntroImage className="h-auto w-[420px] max-w-full" />
         </div>
       </div>
     </header>
